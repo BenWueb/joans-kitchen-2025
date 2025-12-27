@@ -1,11 +1,12 @@
 import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "../firestore.config";
-import google from "../assets/google-g-2015.svg";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { FcGoogle } from "react-icons/fc";
 
 function OAuth() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const onGoogle = async () => {
     try {
@@ -26,7 +27,7 @@ function OAuth() {
           timestamp: serverTimestamp(),
         });
       }
-      navigate("/profile");
+      router.push("/profile");
     } catch (error) {
       console.log(error);
     }
@@ -34,9 +35,13 @@ function OAuth() {
 
   return (
     <>
-      <button onClick={onGoogle} className="btn submit-btn google-btn">
-        <img src={google} alt="google" />
-        Sign {{ pathname } === "/create-account" ? "up" : "in"} with google
+      <button
+        onClick={onGoogle}
+        type="button"
+        className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors font-medium text-gray-700"
+      >
+        <FcGoogle className="w-5 h-5" />
+        Sign {pathname === "/create-account" ? "up" : "in"} with Google
       </button>
     </>
   );

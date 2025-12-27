@@ -5,6 +5,13 @@
   scrollbar-width: none;
 }
 
+/* Global cursor pointer for interactive elements */
+a,
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
 :root {
   --fs-400: clamp(3rem, 12vw + 1rem, 6.5rem);
   --fs-600: clamp(2rem, 6vw + 1rem, 4rem);
@@ -67,7 +74,6 @@ body {
 } */
 
 button:hover {
-  transform: scale(1.05);
   opacity: 0.9;
 }
 
@@ -118,7 +124,7 @@ ul > li {
 }
 
 .search-bar-container button:hover {
-  transform: scale(1);
+  opacity: 0.9;
 }
 
 /***** Filter *****/
@@ -638,7 +644,6 @@ ul > li {
   background-color: var(--secondary-dark);
 }
 .tags-container button:hover {
-  transform: scale(1);
   cursor: default;
   opacity: 1;
 }

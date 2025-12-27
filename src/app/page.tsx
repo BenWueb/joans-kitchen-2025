@@ -25,7 +25,12 @@ const Hit: React.FC<{ hit: { title: string; createdBy: string } }> = ({
 }) => {
   const searchUrl = hit.title
     .replace(/[._~:/?#[\]@!$+;=%]/g, "")
-    .replace(/\s/gi, "_");
+    .replace(/\s/gi, "_")
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join("_");
+
+  const title = hit.title.toLowerCase();
 
   return (
     <>
@@ -42,7 +47,7 @@ const Hit: React.FC<{ hit: { title: string; createdBy: string } }> = ({
           />
         </div>
         <div className="flex justify-between items-center flex-col gap-2 h-full mt-4 mb-2 px-1">
-          <h4 className="text-md">{hit.title}</h4>
+          <h4 className="text-md capitalize">{title}</h4>
           <p className="text-sm">Created by: {hit.createdBy}</p>
         </div>
       </Link>
@@ -63,8 +68,8 @@ function Content() {
 function Main() {
   return (
     <>
-      <section className="">
-        <div className="w-full h-full flex flex-col items-center  p-4 bg-cover bg-no-repeat bg-center bg-fixed   bg-[linear-gradient(to_top,rgba(0,0,0,0.4),rgba(0,0,0,0.7)),url('/images/bg.jpg')] ">
+      <section className="min-h-screen">
+        <div className="w-full min-h-screen flex flex-col items-center p-4">
           <InstantSearch
             searchClient={searchClient}
             indexName="recipes"
@@ -86,7 +91,7 @@ function Main() {
               //   resetIcon: "display: none",
               // }}
             />
-            <main className="w-full h-full flex  p-4 mt-10 bg-zinc-300/80 rounded-lg ">
+            <main className="w-full flex-1 flex  p-4 mt-10 bg-zinc-300/80 rounded-lg mb-4">
               <div className="w-[20%] mt-12 pl-4">
                 <h2 className="text-2xl font-semibold mb-4">Categories</h2>
                 <RefinementList attribute="category" />
