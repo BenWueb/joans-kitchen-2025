@@ -6,6 +6,11 @@ async function Recipe({ params }: { params: { recipe: string } }) {
   const slug = await params;
   const recipeName = slug.recipe.replace(/_/g, " ");
   const data = await getRecipe(recipeName);
+
+  if (!data || data.docs.length === 0) {
+    return <div>Recipe not found</div>;
+  }
+
   const recipe = data.docs[0].data();
 
   return (
