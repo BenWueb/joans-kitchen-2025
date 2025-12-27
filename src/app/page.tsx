@@ -74,7 +74,7 @@ function Main() {
             searchClient={searchClient}
             indexName="recipes"
             routing={true}
-            showSubmit={false}
+            // showSubmit={false}
           >
             <h1
               className={`text-8xl  mt-[5%] mb-10  text-white ${josefinSans.className} font-bold text-center uppercase tracking-wider`}
