@@ -219,20 +219,37 @@ ul > li {
 
 .ais-RefinementList {
   width: 100%;
+  max-width: fit-content;
 }
 .ais-RefinementList-list {
   display: flex;
   flex-direction: column;
-  width: fit-content;
+  width: 100%;
   gap: 5px;
+}
+
+.ais-RefinementList-item {
+  width: 100%;
 }
 
 .ais-RefinementList-label {
   display: flex;
-
+  justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
+  font-size: 0.875rem; /* 14px */
+  width: 100%;
+}
+
+.ais-RefinementList-labelText {
+  font-size: 0.875rem; /* 14px */
+  flex: 1;
+}
+
+.ais-RefinementList-count {
+  font-size: 0.875rem; /* 14px */
+  margin-left: auto;
 }
 
 .search-card {

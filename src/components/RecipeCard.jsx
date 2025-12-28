@@ -1,24 +1,32 @@
 import Link from "next/link";
 
-function RecipeCard({ title }) {
+function RecipeCard({ title, createdBy }) {
   if (!title) {
     return;
   }
 
   return (
     <>
-      <Link className="link category-link" href={`/recipes/${title}`}>
-        <div className="category-card">
-          <div className="category-image">
-            <img
-              src="https://firebasestorage.googleapis.com/v0/b/joans-recipes.appspot.com/o/images%2F96BI44rNPkZcSOZ3wCl4B197Xwr1-anh-nguyen-kcA-c3f_3FE-unsplash.jpg-e7d7932a-f73b-4d6c-8500-e733e7503520_800x800?alt=media&token=95d80d74-2134-42ee-b5ba-5f04df160312"
-              alt="A bright and healthy salad"
-              loading="lazy"
-              className="category-image"
-            />
-          </div>
-          <div className="category-card-title-container">
-            <h4>{title}</h4>
+      <Link
+        className="block relative aspect-square overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
+        href={`/recipes/${title}`}
+      >
+        <div className="relative w-full h-full">
+          {/* Image */}
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+            alt={title}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+
+          {/* Sharp gradient overlay at bottom */}
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/90 via-black/60 to-transparent" />
+
+          {/* Text overlay at bottom */}
+          <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+            <h4 className="text-lg font-bold mb-1 line-clamp-2">{title}</h4>
+            {createdBy && <p className="text-sm opacity-90">By {createdBy}</p>}
           </div>
         </div>
       </Link>

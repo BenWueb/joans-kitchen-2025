@@ -8,31 +8,44 @@ async function Recipe({ params }: { params: { recipe: string } }) {
   const data = await getRecipe(recipeName);
 
   if (!data || data.docs.length === 0) {
-    return <div>Recipe not found</div>;
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen flex items-center justify-center px-4 pt-20">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+            <h2 className="text-2xl font-bold text-gray-700 mb-4">
+              Recipe Not Found
+            </h2>
+            <p className="text-gray-600">
+              The recipe you&apos;re looking for doesn&apos;t exist.
+            </p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   const recipe = data.docs[0].data();
+  const recipeId = data.docs[0].id;
 
   return (
     <>
-      <div className="background"></div>
-      <div className="navbar-container">
-        <Navbar />
-      </div>
-      <div className="container">
-        <div className="page-container">
-          <h1 className="page-title single-title">
-            {recipe.title.toLowerCase()}
-          </h1>
+      <Navbar />
+      <div className="min-h-screen px-4 pt-20 pb-8">
+        <div className="max-w-6xl mx-auto">
           <SingleRecipe
+            recipeId={recipeId}
             title={recipe.title}
             ingredients={recipe.ingredients}
             recipe={recipe.recipe}
             notes={recipe.notes}
+            notesUpdatedBy={recipe.notesUpdatedBy}
+            notesUpdatedAt={recipe.notesUpdatedAt}
             createdBy={recipe.createdBy}
             imageUrls={recipe.imageUrls}
             tags={recipe.tags}
             created={recipe.created}
+            photos={recipe.photos}
           />
         </div>
       </div>

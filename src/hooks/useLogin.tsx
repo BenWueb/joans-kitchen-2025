@@ -19,7 +19,7 @@ export function useLogin() {
     }));
   };
 
-  // Sign in and navigate to profile page
+  // Sign in and navigate back to original page or profile
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -27,7 +27,11 @@ export function useLogin() {
       const auth = getAuth();
       await signInWithEmailAndPassword(auth, email, password);
       setFormData({ email: "", password: "" });
-      setTimeout(() => redirect("/profile"), 1000);
+
+      // Get the return URL from localStorage or default to profile
+      const returnUrl = localStorage.getItem("returnUrl") || "/profile";
+      localStorage.removeItem("returnUrl"); // Clean up
+      setTimeout(() => redirect(returnUrl), 1000);
     } catch (error) {
       console.log(error);
     }

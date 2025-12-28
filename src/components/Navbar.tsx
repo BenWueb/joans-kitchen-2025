@@ -14,7 +14,7 @@ import {
   MdInfoOutline,
 } from "react-icons/md";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import { Logout } from "@/hooks/Logout";
 import { auth } from "../firestore.config";
 
@@ -22,6 +22,7 @@ function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false);
   const menuButtonRef = useRef<HTMLDivElement>(null); // Ref for menu/close button
   const menuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname(); // Get current path
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -50,12 +51,20 @@ function Navbar() {
 
   //Sign out
   const signOut = () => {
-    Logout();
+    Logout(pathname); // Pass current path to store for later
     redirect("/");
   };
 
+  // Store current path before navigating to login
+  const handleLoginClick = () => {
+    if (pathname !== "/login") {
+      localStorage.setItem("returnUrl", pathname);
+    }
+    toggleMenu();
+  };
+
   return (
-    <div className="fixed top-0 w-full">
+    <div className="fixed top-0 w-full z-50">
       <nav className="relative flex justify-between items-center max-w-7xl mx-auto w-full text-white z-10 px-4 py-2">
         <h5>
           <Link href="/">
@@ -76,7 +85,7 @@ function Navbar() {
           {menuVisible && (
             <div
               ref={menuRef}
-              className="absolute min-h-fit right-0 top-0 h-full w-80 bg-white shadow-2xl rounded-lg flex flex-col z-5 border border-gray-200"
+              className="absolute min-h-fit right-0 top-0 h-full w-80 bg-white shadow-2xl rounded-lg flex flex-col z-50 border border-gray-200"
             >
               <div className="flex justify-end px-4 py-2">
                 <div
@@ -97,7 +106,7 @@ function Navbar() {
                   <MdCabin className="w-8 h-auto text-teal-600 flex-shrink-0" />
                   <div>
                     <div className="text-lg font-semibold text-gray-800">
-                      Home
+                      Cabin
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       Return to main page
@@ -114,35 +123,7 @@ function Navbar() {
                       Search
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Find your favorite recipes
-                    </div>
-                  </div>
-                </li>
-              </Link>
-
-              <Link href="/categories" className="w-full" onClick={toggleMenu}>
-                <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                  <MdOutlineGridOn className="w-8 h-auto text-teal-600 flex-shrink-0" />
-                  <div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      Categories
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Browse by meal type
-                    </div>
-                  </div>
-                </li>
-              </Link>
-
-              <Link href="/search" className="w-full" onClick={toggleMenu}>
-                <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                  <MdLibraryBooks className="w-8 h-auto text-teal-600 flex-shrink-0" />
-                  <div>
-                    <div className="text-lg font-semibold text-gray-800">
-                      Recipes
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      View all recipe collection
+                      Find recipes
                     </div>
                   </div>
                 </li>
@@ -220,7 +201,11 @@ function Navbar() {
                   </Link>
                 </>
               ) : (
-                <Link href="/login" className="w-full" onClick={toggleMenu}>
+                <Link
+                  href="/login"
+                  className="w-full"
+                  onClick={handleLoginClick}
+                >
                   <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-green-50 transition-all duration-200 border-l-4 border-transparent hover:border-green-500">
                     <MdLogout className="w-8 h-auto text-green-600 flex-shrink-0" />
                     <div>

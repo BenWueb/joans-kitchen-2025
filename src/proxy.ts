@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function proxy(request: NextRequest) {
+  // Check if under construction mode is enabled
+  const underConstruction =
+    process.env.NEXT_PUBLIC_UNDER_CONSTRUCTION === "true";
+
+  // If not in construction mode, allow all requests
+  if (!underConstruction) {
+    return NextResponse.next();
+  }
+
   // Allow access to the under-construction page itself
   if (request.nextUrl.pathname === "/under-construction") {
     return NextResponse.next();
