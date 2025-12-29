@@ -1,15 +1,18 @@
 import Link from "next/link";
+import { recipeToUrl } from "@/utils/recipeUrl";
 
 function RecipeCard({ title, createdBy }) {
   if (!title) {
     return;
   }
 
+  const recipeUrl = recipeToUrl(title);
+
   return (
     <>
       <Link
         className="block relative aspect-square overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
-        href={`/recipes/${title}`}
+        href={`/${recipeUrl}`}
       >
         <div className="relative w-full h-full">
           {/* Image */}

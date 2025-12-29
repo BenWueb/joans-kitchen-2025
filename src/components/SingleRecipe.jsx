@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   MdFavorite,
   MdAdd,
@@ -15,6 +16,7 @@ import { usePhotoUpload } from "@/hooks/usePhotoUpload";
 import { usePhotoModal } from "@/hooks/usePhotoModal";
 import { useDeletePhotoModal } from "@/hooks/useDeletePhotoModal";
 import { useShareRecipe } from "@/hooks/useShareRecipe";
+import { useDeleteRecipe } from "@/hooks/useDeleteRecipe";
 import { getOrFetchRecipeImage } from "@/utils/unsplash";
 
 function SingleRecipe({
@@ -26,6 +28,7 @@ function SingleRecipe({
   notesUpdatedBy,
   notesUpdatedAt,
   createdBy,
+  createdByUserId,
   imageUrls,
   tags,
   created,
@@ -38,7 +41,7 @@ function SingleRecipe({
     error,
     editingNoteIndex,
     editedNoteText,
-    currentUserEmail,
+    currentUserId,
     isFavorited,
     checkingFavorite,
     localNotes,
@@ -84,6 +87,27 @@ function SingleRecipe({
   // Share recipe hook
   const { showCopyNotification, handleShare } = useShareRecipe();
 
+  const router = useRouter();
+
+  // Delete recipe hook
+  const {
+    showDeleteModal: showDeleteRecipeModal,
+    recipeToDelete,
+    deleting: deletingRecipe,
+    handleDeleteRecipeClick,
+    cancelDelete: cancelDeleteRecipe,
+    confirmDeleteRecipe,
+  } = useDeleteRecipe(
+    currentUserId,
+    async () => {
+      // After deletion, redirect to home
+      router.push("/");
+    },
+    () => {}, // No local state to update
+    () => {}, // Success handled by redirect
+    (msg) => setError(msg) // Error message
+  );
+
   const [localPhotos, setLocalPhotos] = useState(photos || []);
 
   const [recipeImage, setRecipeImage] = useState(
@@ -124,12 +148,20 @@ function SingleRecipe({
   }
 
   // Convert recipe title to url format - handle empty title
-  const searchUrl = title ? title.replace(/\s/gi, "_") : "";
+  // Replace spaces with underscores, then capitalize any letter that follows a non-letter
+  const searchUrl = title
+    ? title
+        .replace(/\s/g, "_")
+        .replace(
+          /(^|[^a-zA-Z])([a-z])/g,
+          (match, p1, p2) => p1 + p2.toUpperCase()
+        )
+    : "";
 
   return (
     <>
       {/* Recipe Title Section */}
-      <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-400px flex items-center">
+      <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-400px flex items-center group">
         {/* Background Image */}
         <div
           className="absolute inset-0 bg-cover bg-center"
@@ -142,6 +174,20 @@ function SingleRecipe({
 
         {/* Gradient Overlay - dark on left, lighter on right */}
         <div className="absolute inset-0 bg-linear-to-r from-black/80 via-black/50 to-black/20" />
+
+        {/* Delete Recipe Button - top right, visible on hover for owner */}
+        {currentUserId && createdByUserId === currentUserId && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              handleDeleteRecipeClick(recipeId, title, e);
+            }}
+            className="absolute top-4 right-4 p-3 bg-red-600 hover:bg-red-700 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-20"
+            title="Delete recipe"
+          >
+            <MdDelete className="w-5 h-5" />
+          </button>
+        )}
 
         {/* Content */}
         <div className="relative z-10 p-8 lg:p-12 max-w-2xl w-full flex flex-col justify-between min-h-400px">
@@ -339,8 +385,8 @@ function SingleRecipe({
                   <>
                     <div className="flex justify-between items-start mb-2">
                       <p className="text-gray-600 flex-1">{note.text}</p>
-                      {currentUserEmail &&
-                        note.addedByEmail === currentUserEmail &&
+                      {currentUserId &&
+                        note.addedByUserId === currentUserId &&
                         editingNoteIndex === null &&
                         !isEditingNotes && (
                           <div className="flex gap-2 ml-2">
@@ -395,7 +441,7 @@ function SingleRecipe({
       <div className="bg-linear-to-br from-teal-100 via-cyan-50 to-teal-100 rounded-lg shadow-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h5 className="text-lg font-bold text-gray-700">Photos</h5>
-          {currentUserEmail && (
+          {currentUserId && (
             <button
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-md transition-colors"
@@ -509,7 +555,7 @@ function SingleRecipe({
                 </div>
 
                 {/* Delete button - visible on hover for owner */}
-                {currentUserEmail === photo.addedByEmail && (
+                {currentUserId === photo.addedByUserId && (
                   <button
                     onClick={() => handleDeletePhotoClick(photo)}
                     disabled={uploadingPhoto}
@@ -650,6 +696,47 @@ function SingleRecipe({
                 <span>Open in New Tab</span>
                 <span className="text-lg">↗</span>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Recipe Confirmation Modal */}
+      {showDeleteRecipeModal && recipeToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <MdDelete className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  Delete Recipe
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Are you sure you want to delete{" "}
+                  <strong>"{recipeToDelete.title}"</strong>? This action cannot
+                  be undone and will permanently delete all recipe data
+                  including photos and notes.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={cancelDeleteRecipe}
+                disabled={deletingRecipe}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteRecipe}
+                disabled={deletingRecipe}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingRecipe ? "Deleting..." : "Delete Recipe"}
+              </button>
             </div>
           </div>
         </div>

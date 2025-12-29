@@ -162,7 +162,7 @@ function Navbar() {
                   </Link>
 
                   <Link
-                    href="/add-recipe"
+                    href="/create_recipe"
                     className="w-full"
                     onClick={toggleMenu}
                   >

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Josefin_Sans } from "next/font/google";
 import { useState, useEffect } from "react";
 import { getOrFetchRecipeImage } from "@/utils/unsplash";
+import { recipeToUrl } from "@/utils/recipeUrl";
 
 import {
   Pagination,
@@ -44,12 +45,7 @@ const Hit: React.FC<{ hit: any }> = ({ hit }) => {
     loadImage();
   }, [hit]);
 
-  const searchUrl = hit.title
-    .replace(/[._~:/?#[\]@!$+;=%]/g, "")
-    .replace(/\s/gi, "_")
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join("_");
+  const searchUrl = recipeToUrl(hit.title);
 
   const title = hit.title.toLowerCase();
 

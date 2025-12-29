@@ -12,11 +12,14 @@ import {
   MdCancel,
   MdVerified,
   MdWarning,
+  MdDelete,
 } from "react-icons/md";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { getAuth, updateEmail, sendEmailVerification } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db } from "@/firestore.config";
+import { useDeleteRecipe } from "@/hooks/useDeleteRecipe";
+import { recipeToUrl } from "@/utils/recipeUrl";
 
 function Profile() {
   const router = useRouter();
@@ -33,17 +36,14 @@ function Profile() {
     Array<{ id: string; title: string; createdBy: string; photos?: any[] }>
   >([]);
   const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [userRecipes, setUserRecipes] = useState<
+    Array<{ id: string; title: string; createdBy: string; photos?: any[] }>
+  >([]);
+  const [loadingUserRecipes, setLoadingUserRecipes] = useState(true);
 
   const auth = getAuth();
   const currentUser = auth.currentUser;
   const isEmailVerified = currentUser?.emailVerified || false;
-
-  // Update currentUserData only on initial load
-  useEffect(() => {
-    if (userData && !currentUserData) {
-      setCurrentUserData(userData);
-    }
-  }, [userData, currentUserData]);
 
   // Refetch user data from Firestore
   const refetchUserData = async () => {
@@ -56,7 +56,23 @@ function Profile() {
     }
   };
 
-  // Fetch favorite recipe details
+  // Delete recipe hook
+  const {
+    showDeleteModal,
+    recipeToDelete,
+    deleting,
+    handleDeleteRecipeClick,
+    cancelDelete,
+    confirmDeleteRecipe,
+  } = useDeleteRecipe(
+    currentUser?.uid,
+    refetchUserData,
+    setUserRecipes,
+    setSuccess,
+    setError
+  );
+
+  // Update currentUserData only on initial load  // Fetch favorite recipe details
   useEffect(() => {
     const fetchFavoriteRecipes = async () => {
       if (userData?.favorites && userData.favorites.length > 0) {
@@ -98,6 +114,48 @@ function Profile() {
     fetchFavoriteRecipes();
   }, [userData?.favorites]);
 
+  // Fetch user's created recipes
+  useEffect(() => {
+    const fetchUserRecipes = async () => {
+      if (userData?.recipes && userData.recipes.length > 0) {
+        setLoadingUserRecipes(true);
+        try {
+          const recipePromises = userData.recipes.map(
+            async (recipeId: string) => {
+              const recipeDoc = await getDoc(doc(db, "recipes", recipeId));
+              if (recipeDoc.exists()) {
+                return {
+                  id: recipeId,
+                  title: recipeDoc.data().title,
+                  createdBy: recipeDoc.data().createdBy,
+                  photos: recipeDoc.data().photos,
+                };
+              }
+              return null;
+            }
+          );
+
+          const recipes = await Promise.all(recipePromises);
+          setUserRecipes(
+            recipes.filter((recipe) => recipe !== null) as Array<{
+              id: string;
+              title: string;
+              createdBy: string;
+              photos?: any[];
+            }>
+          );
+        } catch (error) {
+          console.error("Error fetching user recipes:", error);
+        }
+        setLoadingUserRecipes(false);
+      } else {
+        setLoadingUserRecipes(false);
+      }
+    };
+
+    fetchUserRecipes();
+  }, [userData?.recipes]);
+
   if (loading) {
     return (
       <>
@@ -114,7 +172,10 @@ function Profile() {
     return null;
   }
 
-  if (!currentUserData) {
+  // Use userData directly if currentUserData isn't set yet
+  const displayData = currentUserData || userData;
+
+  if (!displayData) {
     return (
       <>
         <Navbar />
@@ -125,7 +186,7 @@ function Profile() {
     );
   }
 
-  const { name, email, favorites, about } = currentUserData;
+  const { name, email, favorites, about } = displayData;
 
   const handleEdit = () => {
     setEditedName(name);
@@ -369,24 +430,16 @@ function Profile() {
                   Loading favorites...
                 </p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   {favoriteRecipes.length > 0 ? (
                     favoriteRecipes.map((recipe) => {
-                      const searchUrl = recipe.title
-                        .replace(/\s/gi, "_")
-                        .split("_")
-                        .map(
-                          (word) =>
-                            word.charAt(0).toUpperCase() +
-                            word.slice(1).toLowerCase()
-                        )
-                        .join("_");
+                      const searchUrl = recipeToUrl(recipe.title);
 
                       return (
                         <Link
                           key={recipe.id}
                           href={`/${searchUrl}`}
-                          className="block relative aspect-square overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
+                          className="block relative aspect-[16/9] overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
                         >
                           {/* Image */}
                           <Image
@@ -401,7 +454,7 @@ function Profile() {
                           />
 
                           {/* Sharp gradient overlay at bottom */}
-                          <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-black/95 via-black/70 to-transparent pointer-events-none z-10" />
+                          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/95 via-black/70 to-transparent pointer-events-none z-10" />
 
                           {/* Text overlay at bottom */}
                           <div className="absolute inset-x-0 bottom-0 p-4 text-white z-10 text-left">
@@ -431,14 +484,77 @@ function Profile() {
               <h2 className="text-2xl font-bold text-gray-700 mb-6">
                 My Recipes
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                <p className="text-gray-500 col-span-full text-center py-8">
-                  No recipes yet
+              {loadingUserRecipes ? (
+                <p className="text-gray-500 text-center py-8">
+                  Loading recipes...
                 </p>
-              </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {userRecipes.length > 0 ? (
+                    userRecipes.map((recipe) => {
+                      const searchUrl = recipeToUrl(recipe.title);
+
+                      return (
+                        <div key={recipe.id} className="relative group">
+                          <Link
+                            href={`/${searchUrl}`}
+                            className="block relative aspect-[16/9] overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
+                          >
+                            {/* Image */}
+                            <Image
+                              src={
+                                recipe.photos && recipe.photos.length > 0
+                                  ? recipe.photos[0].url
+                                  : "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+                              }
+                              fill
+                              alt={recipe.title}
+                              className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+
+                            {/* Sharp gradient overlay at bottom */}
+                            <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/95 via-black/70 to-transparent pointer-events-none z-10" />
+
+                            {/* Text overlay at bottom */}
+                            <div className="absolute inset-x-0 bottom-0 p-4 text-white z-10 text-left">
+                              <h4 className="text-base font-bold mb-1 line-clamp-2 capitalize">
+                                {recipe.title.toLowerCase()}
+                              </h4>
+                              {recipe.createdBy && (
+                                <p className="text-xs opacity-90">
+                                  By {recipe.createdBy}
+                                </p>
+                              )}
+                            </div>
+                          </Link>
+
+                          {/* Delete button - visible on hover */}
+                          <button
+                            onClick={(e) =>
+                              handleDeleteRecipeClick(
+                                recipe.id,
+                                recipe.title,
+                                e
+                              )
+                            }
+                            className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-20"
+                            title="Delete recipe"
+                          >
+                            <MdDelete className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-gray-500 col-span-full text-center py-8">
+                      No recipes yet
+                    </p>
+                  )}
+                </div>
+              )}
               <button
-                onClick={() => router.push("/add-recipe")}
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 rounded-md transition-colors"
+                onClick={() => router.push("/create_recipe")}
+                className="w-full mt-6 bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 rounded-md transition-colors"
               >
                 Add Recipe
               </button>
@@ -446,6 +562,47 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && recipeToDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fade-in">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <MdDelete className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                  Delete Recipe
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Are you sure you want to delete{" "}
+                  <strong>"{recipeToDelete.title}"</strong>? This action cannot
+                  be undone and will permanently delete all recipe data
+                  including photos and notes.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end mt-6">
+              <button
+                onClick={cancelDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteRecipe}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? "Deleting..." : "Delete Recipe"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

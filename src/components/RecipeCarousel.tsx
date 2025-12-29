@@ -6,6 +6,7 @@ import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/firestore.config";
 import { getOrFetchRecipeImage } from "@/utils/unsplash";
+import { recipeToUrl } from "@/utils/recipeUrl";
 
 interface Recipe {
   id: string;
@@ -120,11 +121,7 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
     currentRecipe.imageUrls?.[0] ||
     "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
 
-  const searchUrl = currentRecipe.title
-    .replace(/\s/gi, "_")
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join("_");
+  const searchUrl = recipeToUrl(currentRecipe.title);
 
   return (
     <div className="relative w-full aspect-[21/9] rounded-lg shadow-lg overflow-hidden group mb-8">

@@ -22,7 +22,7 @@ export default function HomeSearchBox() {
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search by Title, Author or Notes"
-        className="w-[80%] mx-auto block px-4 py-2 bg-white text-gray-400 placeholder-gray-400 border rounded-lg focus:outline-none"
+        className="w-[80%] mx-auto block px-4 py-2 bg-white text-gray-400 placeholder-gray-400 border rounded-lg focus:outline-none max-w-[800px]"
       />
     </form>
   );

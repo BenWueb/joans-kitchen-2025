@@ -5,7 +5,7 @@ import OAuth from "@/components/OAuth";
 import { useLogin } from "@/hooks/useLogin";
 
 function Login() {
-  const { email, password, onChange, onSubmit } = useLogin();
+  const { email, password, error, loading, onChange, onSubmit } = useLogin();
 
   return (
     <>
@@ -16,6 +16,12 @@ function Login() {
             <h1 className="text-3xl font-bold text-gray-700 text-center mb-8">
               Sign In
             </h1>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-center">
+                {error}
+              </div>
+            )}
 
             <form className="space-y-5" onSubmit={onSubmit}>
               <div>
@@ -64,9 +70,14 @@ function Login() {
 
               <button
                 type="submit"
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white font-medium py-2.5 rounded-md transition-colors"
+                disabled={loading}
+                className={`w-full font-medium py-2.5 rounded-md transition-colors ${
+                  loading
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-teal-600 hover:bg-teal-700 text-white"
+                }`}
               >
-                Sign In
+                {loading ? "Signing In..." : "Sign In"}
               </button>
             </form>
 

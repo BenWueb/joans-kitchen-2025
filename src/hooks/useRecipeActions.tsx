@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   doc,
   updateDoc,
@@ -30,7 +30,7 @@ export const useRecipeActions = (
   const [error, setError] = useState("");
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [editedNoteText, setEditedNoteText] = useState("");
-  const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const [isFavorited, setIsFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -68,13 +68,14 @@ export const useRecipeActions = (
     setLocalNotes(updatedNotesArray);
   }, [notes, notesUpdatedBy, notesUpdatedAt]);
 
-  // Get current user's email and check if recipe is favorited
+  // Get current user's ID and check if recipe is favorited
   useEffect(() => {
-    const fetchUserData = async () => {
-      const auth = getAuth();
-      const user = auth.currentUser;
+    const auth = getAuth();
+
+    // Use onAuthStateChanged to ensure we get the user even if auth is still initializing
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        setCurrentUserEmail(user.email || "");
+        setCurrentUserId(user.uid);
 
         // Check if this recipe is in user's favorites
         try {
@@ -88,10 +89,13 @@ export const useRecipeActions = (
         } catch (error) {
           console.error("Error checking favorites:", error);
         }
+      } else {
+        setCurrentUserId("");
       }
       setCheckingFavorite(false);
-    };
-    fetchUserData();
+    });
+
+    return () => unsubscribe();
   }, [recipeId]);
 
   // Toggle favorite - Add/remove recipe from user's favorites array
@@ -402,7 +406,7 @@ export const useRecipeActions = (
     error,
     editingNoteIndex,
     editedNoteText,
-    currentUserEmail,
+    currentUserId,
     isFavorited,
     checkingFavorite,
     localNotes,
