@@ -45,6 +45,7 @@ async function Recipe({ params }: { params: { recipe: string } }) {
             createdBy={recipe.createdBy}
             createdByUserId={recipe.createdByUserId}
             imageUrls={recipe.imageUrls}
+            unsplashImageUrl={recipe.unsplashImageUrl}
             tags={recipe.tags}
             created={recipe.created}
             photos={recipe.photos}

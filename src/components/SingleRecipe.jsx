@@ -30,6 +30,7 @@ function SingleRecipe({
   createdBy,
   createdByUserId,
   imageUrls,
+  unsplashImageUrl,
   tags,
   created,
   photos,
@@ -111,6 +112,7 @@ function SingleRecipe({
   const [localPhotos, setLocalPhotos] = useState(photos || []);
   const [recipeImage, setRecipeImage] = useState(
     (photos && photos.length > 0 ? photos[0].url : null) ||
+      unsplashImageUrl ||
       imageUrls?.[0] ||
       "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
   );
