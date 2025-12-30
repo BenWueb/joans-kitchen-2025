@@ -265,7 +265,7 @@ function SingleRecipe({
             <ol className="space-y-3">
               {steps.map((step, index) => (
                 <li key={index} className="text-gray-600 flex gap-3">
-                  <span className="font-bold text-teal-600 flex-shrink-0">
+                  <span className="font-bold text-teal-600 shrink-0">
                     {index + 1}.
                   </span>
                   <span>{step}</span>

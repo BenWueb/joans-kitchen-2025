@@ -348,6 +348,7 @@ export const useCreateRecipe = () => {
       title: "",
       ingredients: "",
       recipe: "",
+      notes: "",
     });
     setSelectedFiles([]);
     setPreviewUrls([]);

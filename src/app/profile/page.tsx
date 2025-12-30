@@ -439,7 +439,7 @@ function Profile() {
                         <Link
                           key={recipe.id}
                           href={`/${searchUrl}`}
-                          className="block relative aspect-[16/9] overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
+                          className="block relative aspect-video overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
                         >
                           {/* Image */}
                           <Image
@@ -493,7 +493,7 @@ function Profile() {
                         <div key={recipe.id} className="relative group">
                           <Link
                             href={`/${searchUrl}`}
-                            className="block relative aspect-[16/9] overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
+                            className="block relative aspect-video overflow-hidden rounded-lg shadow-lg group hover:shadow-xl transition-shadow"
                           >
                             {/* Image */}
                             <Image

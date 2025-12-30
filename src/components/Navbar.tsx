@@ -103,7 +103,7 @@ function Navbar() {
 
               <Link href="/" className="w-full" onClick={toggleMenu}>
                 <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                  <MdCabin className="w-8 h-auto text-teal-600 flex-shrink-0" />
+                  <MdCabin className="w-8 h-auto text-teal-600 shrink-0" />
                   <div>
                     <div className="text-lg font-semibold text-gray-800">
                       Cabin
@@ -117,7 +117,7 @@ function Navbar() {
 
               <Link href="/search" className="w-full" onClick={toggleMenu}>
                 <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                  <MdSearch className="w-8 h-auto text-teal-600 flex-shrink-0" />
+                  <MdSearch className="w-8 h-auto text-teal-600 shrink-0" />
                   <div>
                     <div className="text-lg font-semibold text-gray-800">
                       Search
@@ -131,7 +131,7 @@ function Navbar() {
 
               <Link href="/" className="w-full" onClick={toggleMenu}>
                 <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                  <MdInfoOutline className="w-8 h-auto text-teal-600 flex-shrink-0" />
+                  <MdInfoOutline className="w-8 h-auto text-teal-600 shrink-0" />
                   <div>
                     <div className="text-lg font-semibold text-gray-800">
                       About
@@ -149,7 +149,7 @@ function Navbar() {
                 <>
                   <Link href="/profile" className="w-full" onClick={toggleMenu}>
                     <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
-                      <MdOutlinePerson className="w-8 h-auto text-teal-600 flex-shrink-0" />
+                      <MdOutlinePerson className="w-8 h-auto text-teal-600 shrink-0" />
                       <div>
                         <div className="text-lg font-semibold text-gray-800">
                           Profile
@@ -167,7 +167,7 @@ function Navbar() {
                     onClick={toggleMenu}
                   >
                     <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-green-50 transition-all duration-200 border-l-4 border-transparent hover:border-green-500">
-                      <MdOutlinePostAdd className="w-8 h-auto text-green-600 flex-shrink-0" />
+                      <MdOutlinePostAdd className="w-8 h-auto text-green-600 shrink-0" />
                       <div>
                         <div className="text-lg font-semibold text-gray-800">
                           Add Recipe
@@ -188,7 +188,7 @@ function Navbar() {
                     }}
                   >
                     <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-red-50 transition-all duration-200 border-l-4 border-transparent hover:border-red-500">
-                      <MdLogout className="w-8 h-auto text-red-600 flex-shrink-0" />
+                      <MdLogout className="w-8 h-auto text-red-600 shrink-0" />
                       <div>
                         <div className="text-lg font-semibold text-red-600">
                           Sign Out
@@ -207,7 +207,7 @@ function Navbar() {
                   onClick={handleLoginClick}
                 >
                   <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-green-50 transition-all duration-200 border-l-4 border-transparent hover:border-green-500">
-                    <MdLogout className="w-8 h-auto text-green-600 flex-shrink-0" />
+                    <MdLogout className="w-8 h-auto text-green-600 shrink-0" />
                     <div>
                       <div className="text-lg font-semibold text-green-700">
                         Login

@@ -91,7 +91,7 @@ function CreateRecipe() {
                   Ingredients *
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[150px]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-37.5"
                   id="ingredients"
                   value={formData.ingredients}
                   placeholder="List all ingredients, one per line"
@@ -111,7 +111,7 @@ function CreateRecipe() {
                   Instructions *
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[250px]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-62.5"
                   id="recipe"
                   value={formData.recipe}
                   placeholder="Start typing instructions. Use a new line for each step."
@@ -133,7 +133,7 @@ function CreateRecipe() {
                   Notes (Optional)
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-[100px]"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 min-h-25"
                   id="notes"
                   value={formData.notes}
                   placeholder="Add any additional notes or tips for this recipe"
