@@ -4,8 +4,6 @@ import searchClient from "@/utils/algolia";
 import Link from "next/link";
 import Image from "next/image";
 import { Josefin_Sans } from "next/font/google";
-import { useState, useEffect } from "react";
-import { getOrFetchRecipeImage } from "@/utils/unsplash";
 import { recipeToUrl } from "@/utils/recipeUrl";
 
 import {
@@ -24,26 +22,9 @@ const josefinSans = Josefin_Sans({
 
 // Convert title to URL format and display each hit
 const Hit: React.FC<{ hit: any }> = ({ hit }) => {
-  const [imageUrl, setImageUrl] = useState(
+  const imageUrl =
     hit.imageUrls?.[0] ||
-      hit.unsplashImageUrl ||
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
-  );
-
-  useEffect(() => {
-    const loadImage = async () => {
-      if (!hit.imageUrls?.[0] && !hit.unsplashImageUrl) {
-        const url = await getOrFetchRecipeImage(hit.objectID, {
-          id: hit.objectID,
-          title: hit.title,
-          tags: hit.tags,
-          imageUrls: hit.imageUrls,
-        });
-        setImageUrl(url);
-      }
-    };
-    loadImage();
-  }, [hit]);
+    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c";
 
   const searchUrl = recipeToUrl(hit.title);
 

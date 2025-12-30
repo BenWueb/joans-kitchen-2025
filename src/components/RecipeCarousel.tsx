@@ -5,7 +5,6 @@ import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import Link from "next/link";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/firestore.config";
-import { getOrFetchRecipeImage } from "@/utils/unsplash";
 import { recipeToUrl } from "@/utils/recipeUrl";
 
 interface Recipe {
@@ -55,23 +54,15 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
         setRecipes(fetchedRecipes);
         setLoading(false);
 
-        // Fetch images for all recipes
-        fetchedRecipes.forEach(async (recipe) => {
-          // Prioritize first photo, then fetch from Unsplash
-          if (recipe.photos && recipe.photos.length > 0) {
-            setRecipeImages((prev) => ({
-              ...prev,
-              [recipe.id]: recipe.photos![0].url,
-            }));
-          } else {
-            const imageUrl = await getOrFetchRecipeImage(recipe.id, {
-              id: recipe.id,
-              title: recipe.title,
-              tags: recipe.tags,
-              imageUrls: recipe.imageUrls,
-            });
-            setRecipeImages((prev) => ({ ...prev, [recipe.id]: imageUrl }));
-          }
+        // Load images for all recipes
+        fetchedRecipes.forEach((recipe) => {
+          const imageUrl =
+            (recipe.photos && recipe.photos.length > 0
+              ? recipe.photos[0].url
+              : null) ||
+            recipe.imageUrls?.[0] ||
+            "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
+          setRecipeImages((prev) => ({ ...prev, [recipe.id]: imageUrl }));
         });
       } catch (error) {
         console.error("Error fetching recipes:", error);

@@ -430,7 +430,7 @@ function Profile() {
                   Loading favorites...
                 </p>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
                   {favoriteRecipes.length > 0 ? (
                     favoriteRecipes.map((recipe) => {
                       const searchUrl = recipeToUrl(recipe.title);
@@ -453,19 +453,14 @@ function Profile() {
                             className="object-cover group-hover:scale-105 transition-transform duration-300"
                           />
 
-                          {/* Sharp gradient overlay at bottom */}
-                          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/95 via-black/70 to-transparent pointer-events-none z-10" />
+                          {/* Dark overlay */}
+                          <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
 
-                          {/* Text overlay at bottom */}
-                          <div className="absolute inset-x-0 bottom-0 p-4 text-white z-10 text-left">
-                            <h4 className="text-base font-bold mb-1 line-clamp-2 capitalize">
+                          {/* Text overlay centered */}
+                          <div className="absolute inset-0 flex items-center justify-center px-1 sm:px-2 text-white z-10">
+                            <h4 className="text-xs sm:text-sm md:text-base font-bold line-clamp-2 capitalize">
                               {recipe.title.toLowerCase()}
                             </h4>
-                            {recipe.createdBy && (
-                              <p className="text-xs opacity-90">
-                                By {recipe.createdBy}
-                              </p>
-                            )}
                           </div>
                         </Link>
                       );
@@ -489,7 +484,7 @@ function Profile() {
                   Loading recipes...
                 </p>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-3 sm:gap-4">
                   {userRecipes.length > 0 ? (
                     userRecipes.map((recipe) => {
                       const searchUrl = recipeToUrl(recipe.title);
@@ -512,19 +507,14 @@ function Profile() {
                               className="object-cover group-hover:scale-105 transition-transform duration-300"
                             />
 
-                            {/* Sharp gradient overlay at bottom */}
-                            <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-black/95 via-black/70 to-transparent pointer-events-none z-10" />
+                            {/* Dark overlay */}
+                            <div className="absolute inset-0 bg-black/40 pointer-events-none z-10" />
 
-                            {/* Text overlay at bottom */}
-                            <div className="absolute inset-x-0 bottom-0 p-4 text-white z-10 text-left">
-                              <h4 className="text-base font-bold mb-1 line-clamp-2 capitalize">
+                            {/* Text overlay centered */}
+                            <div className="absolute inset-0 flex items-center justify-center px-1 sm:px-2 text-white z-10">
+                              <h4 className="text-xs sm:text-sm md:text-base font-bold line-clamp-2 capitalize">
                                 {recipe.title.toLowerCase()}
                               </h4>
-                              {recipe.createdBy && (
-                                <p className="text-xs opacity-90">
-                                  By {recipe.createdBy}
-                                </p>
-                              )}
                             </div>
                           </Link>
 

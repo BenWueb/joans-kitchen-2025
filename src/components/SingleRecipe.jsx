@@ -17,7 +17,6 @@ import { usePhotoModal } from "@/hooks/usePhotoModal";
 import { useDeletePhotoModal } from "@/hooks/useDeletePhotoModal";
 import { useShareRecipe } from "@/hooks/useShareRecipe";
 import { useDeleteRecipe } from "@/hooks/useDeleteRecipe";
-import { getOrFetchRecipeImage } from "@/utils/unsplash";
 
 function SingleRecipe({
   recipeId,
@@ -110,30 +109,10 @@ function SingleRecipe({
 
   const [localPhotos, setLocalPhotos] = useState(photos || []);
 
-  const [recipeImage, setRecipeImage] = useState(
+  const recipeImage =
     (photos && photos.length > 0 ? photos[0].url : null) ||
-      imageUrls?.[0] ||
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
-  );
-
-  // Fetch recipe image on mount
-  useEffect(() => {
-    const loadImage = async () => {
-      // If there's a photo, use it; otherwise fetch from Unsplash
-      if (photos && photos.length > 0) {
-        setRecipeImage(photos[0].url);
-      } else {
-        const url = await getOrFetchRecipeImage(recipeId, {
-          id: recipeId,
-          title,
-          tags,
-          imageUrls,
-        });
-        setRecipeImage(url);
-      }
-    };
-    loadImage();
-  }, [recipeId, title, tags, imageUrls, photos]);
+    imageUrls?.[0] ||
+    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
 
   // Update local photos when photos prop changes
   useEffect(() => {

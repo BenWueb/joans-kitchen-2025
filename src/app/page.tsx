@@ -3,6 +3,8 @@
 import { Josefin_Sans } from "next/font/google";
 import RecipeCarousel from "@/components/RecipeCarousel";
 import HomeSearchBox from "@/components/HomeSearchBox";
+import CategoryCards from "@/components/CategoryCards";
+import RecentlyFavorited from "@/components/RecentlyFavorited";
 
 const josefinSans = Josefin_Sans({
   subsets: ["latin"],
@@ -35,6 +37,12 @@ function Main() {
               ]}
             />
           </div>
+
+          {/* Category Cards */}
+          <CategoryCards />
+
+          {/* Recently Favorited */}
+          <RecentlyFavorited />
         </div>
       </section>
     </>
