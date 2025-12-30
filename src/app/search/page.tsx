@@ -23,6 +23,7 @@ const josefinSans = Josefin_Sans({
 // Convert title to URL format and display each hit
 const Hit: React.FC<{ hit: any }> = ({ hit }) => {
   const imageUrl =
+    hit.unsplashImageUrl ||
     hit.imageUrls?.[0] ||
     "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c";
 
@@ -38,7 +39,7 @@ const Hit: React.FC<{ hit: any }> = ({ hit }) => {
       >
         {/* Image */}
         <Image
-          src="https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+          src={imageUrl}
           fill
           alt={title}
           className="object-cover group-hover:scale-105 transition-transform duration-300"

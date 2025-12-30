@@ -66,48 +66,34 @@ export const getOrFetchRecipeImage = async (
       return recipe.imageUrls[0];
     }
 
-    // 2. Check if recipe already has cached Unsplash URL in Firestore
+    // 2. Check if recipe already has cached Unsplash URL in Firestore (priority)
     if (recipe.unsplashImageUrl) {
       return recipe.unsplashImageUrl;
     }
 
-    // 3. Check localStorage cache (client-side only)
-    if (typeof window !== "undefined") {
-      const cached = localStorage.getItem(`recipe_img_${recipeId}`);
-      if (cached) {
-        const { url, timestamp } = JSON.parse(cached);
-        // Cache valid for 30 days
-        if (Date.now() - timestamp < 30 * 24 * 60 * 60 * 1000) {
-          return url;
-        }
-      }
-    }
-
-    // 4. Fetch from Unsplash
+    // 3. Fetch from Unsplash
     const query = `${recipe.title} food`;
     const imageData = await fetchUnsplashImage(query);
 
     if (imageData) {
       // Save to Firestore for future use
-      const recipeRef = doc(db, "recipes", recipeId);
-      await updateDoc(recipeRef, {
-        unsplashImageUrl: imageData.url,
-        unsplashPhotographer: imageData.photographer,
-        unsplashPhotographerUrl: imageData.photographerUrl,
-      });
-
-      // Save to localStorage (client-side)
-      if (typeof window !== "undefined") {
-        localStorage.setItem(
-          `recipe_img_${recipeId}`,
-          JSON.stringify({ url: imageData.url, timestamp: Date.now() })
-        );
+      try {
+        const recipeRef = doc(db, "recipes", recipeId);
+        await updateDoc(recipeRef, {
+          unsplashImageUrl: imageData.url,
+          unsplashPhotographer: imageData.photographer,
+          unsplashPhotographerUrl: imageData.photographerUrl,
+        });
+        console.log(`Saved Unsplash image to Firestore for recipe ${recipeId}`);
+      } catch (error) {
+        console.error("Failed to save to Firestore:", error);
+        // Continue anyway, we have the image
       }
 
       return imageData.url;
     }
 
-    // 5. Fallback to default image
+    // 4. Fallback to default image
     return fallbackImage;
   } catch (error) {
     console.error("Error in getOrFetchRecipeImage:", error);

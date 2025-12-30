@@ -17,6 +17,7 @@ import { usePhotoModal } from "@/hooks/usePhotoModal";
 import { useDeletePhotoModal } from "@/hooks/useDeletePhotoModal";
 import { useShareRecipe } from "@/hooks/useShareRecipe";
 import { useDeleteRecipe } from "@/hooks/useDeleteRecipe";
+import { getOrFetchRecipeImage } from "@/utils/unsplash";
 
 function SingleRecipe({
   recipeId,
@@ -108,16 +109,30 @@ function SingleRecipe({
   );
 
   const [localPhotos, setLocalPhotos] = useState(photos || []);
-
-  const recipeImage =
+  const [recipeImage, setRecipeImage] = useState(
     (photos && photos.length > 0 ? photos[0].url : null) ||
-    imageUrls?.[0] ||
-    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
+      imageUrls?.[0] ||
+      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
+  );
 
   // Update local photos when photos prop changes
   useEffect(() => {
     setLocalPhotos(photos || []);
   }, [photos]);
+
+  // Fetch or get cached image from Unsplash
+  useEffect(() => {
+    const loadImage = async () => {
+      const url = await getOrFetchRecipeImage(recipeId, {
+        id: recipeId,
+        title,
+        tags,
+        imageUrls,
+      });
+      setRecipeImage(url);
+    };
+    loadImage();
+  }, [recipeId, title, tags, imageUrls]);
 
   // Remove early return - let page display even if recipe is empty
   // Split steps - handle empty recipe gracefully
