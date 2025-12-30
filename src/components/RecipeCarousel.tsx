@@ -94,7 +94,7 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
 
   if (loading) {
     return (
-      <div className="relative w-full aspect-21/9 g-gray-200 rounded-lg shadow-lg animate-pulse">
+      <div className="relative w-full aspect-video md:aspect-21/9 g-gray-200 rounded-lg shadow-lg animate-pulse">
         <div className="flex items-center justify-center h-full">
           <p className="text-gray-500">Loading recipes...</p>
         </div>
@@ -115,7 +115,7 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
   const searchUrl = recipeToUrl(currentRecipe.title);
 
   return (
-    <div className="relative w-full aspect-21/9 rounded-lg shadow-lg overflow-hidden group mb-8">
+    <div className="relative w-full aspect-video md:aspect-21/9 rounded-lg shadow-lg overflow-hidden group mb-8">
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center transition-all duration-500"

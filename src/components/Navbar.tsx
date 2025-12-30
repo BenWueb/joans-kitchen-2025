@@ -108,8 +108,8 @@ function Navbar() {
                     <div className="text-lg font-semibold text-gray-800">
                       Cabin
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Return to main page
+                    <div className="text-xs text-gray-500 mt-.5">
+                      Return to the main page
                     </div>
                   </div>
                 </li>
@@ -122,26 +122,26 @@ function Navbar() {
                     <div className="text-lg font-semibold text-gray-800">
                       Search
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 mt-.5">
                       Find recipes
                     </div>
                   </div>
                 </li>
               </Link>
 
-              <Link href="/" className="w-full" onClick={toggleMenu}>
+              {/* <Link href="/" className="w-full" onClick={toggleMenu}>
                 <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">
                   <MdInfoOutline className="w-8 h-auto text-teal-600 shrink-0" />
                   <div>
                     <div className="text-lg font-semibold text-gray-800">
                       About
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-gray-500 mt-.5">
                       Learn more about us
                     </div>
                   </div>
                 </li>
-              </Link>
+              </Link> */}
 
               <div className="border-t border-gray-200 my-2"></div>
 
@@ -154,7 +154,7 @@ function Navbar() {
                         <div className="text-lg font-semibold text-gray-800">
                           Profile
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-.5">
                           View your account details
                         </div>
                       </div>
@@ -172,7 +172,7 @@ function Navbar() {
                         <div className="text-lg font-semibold text-gray-800">
                           Add Recipe
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-.5">
                           Share your culinary creation
                         </div>
                       </div>
@@ -193,7 +193,7 @@ function Navbar() {
                         <div className="text-lg font-semibold text-red-600">
                           Sign Out
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-.5">
                           Log out of your account
                         </div>
                       </div>
@@ -212,7 +212,7 @@ function Navbar() {
                       <div className="text-lg font-semibold text-green-700">
                         Login
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-gray-500 mt-.5">
                         Access your account
                       </div>
                     </div>

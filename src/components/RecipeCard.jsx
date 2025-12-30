@@ -28,7 +28,7 @@ function RecipeCard({ title, createdBy }) {
 
           {/* Text overlay at bottom */}
           <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-            <h4 className="text-lg font-bold mb-1 line-clamp-2">{title}</h4>
+            <h4 className="text-lg font-bold line-clamp-2">{title}</h4>
             {createdBy && <p className="text-sm opacity-90">By {createdBy}</p>}
           </div>
         </div>

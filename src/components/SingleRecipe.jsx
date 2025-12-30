@@ -140,7 +140,7 @@ function SingleRecipe({
   return (
     <>
       {/* Recipe Title Section */}
-      <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-400px flex items-center group">
+      <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-25 flex items-center group">
         {/* Background Image */}
         <div
           className="absolute inset-0 bg-cover bg-center"
