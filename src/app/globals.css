@@ -160,11 +160,19 @@ ul > li {
 /**** Search ****/
 
 .ais-SearchBox {
-  width: 50%;
+  width: 100%;
   max-width: 1000px;
   display: flex;
   justify-content: center;
   margin-bottom: 20px;
+  padding: 0 8px;
+}
+
+@media (min-width: 768px) {
+  .ais-SearchBox {
+    width: 50%;
+    padding: 0;
+  }
 }
 
 .ais-SearchBox-form {
@@ -284,6 +292,19 @@ ul > li {
   flex-wrap: wrap;
   justify-content: center;
   gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .ais-Hits-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .ais-Hits-item {
+    width: 100%;
+    height: 250px;
+  }
 }
 
 .ais-Pagination-list {

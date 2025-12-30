@@ -128,21 +128,21 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
       {/* Content */}
       <Link
         href={`/${searchUrl}`}
-        className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 text-white z-10"
+        className="absolute inset-0 flex flex-col justify-center px-4 sm:px-8 md:px-16 text-white z-10"
       >
         <div className="max-w-[66.666%]">
-          <h2 className="text-4xl md:text-6xl font-bold mb-2 capitalize drop-shadow-lg">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold mb-2 capitalize drop-shadow-lg">
             {currentRecipe.title.toLowerCase()}
           </h2>
 
           {/* Notes in quotes */}
           {currentRecipe.notes && (
-            <p className="text-lg md:text-xl italic opacity-90 drop-shadow-md mb-2">
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl italic opacity-90 drop-shadow-md mb-2">
               &ldquo;{currentRecipe.notes}&rdquo;
             </p>
           )}
 
-          <p className="text-base md:text-lg opacity-90 drop-shadow-md">
+          <p className="text-xs sm:text-sm md:text-base lg:text-lg opacity-90 drop-shadow-md">
             By {currentRecipe.createdBy}
           </p>
         </div>
@@ -153,7 +153,7 @@ export default function RecipeCarousel({ recipeIds }: RecipeCarouselProps) {
             {currentRecipe.tags.slice(0, 3).map((tag, index) => (
               <span
                 key={index}
-                className="px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-xs font-semibold rounded-full border border-white/30"
+                className="px-2 sm:px-3 py-1 bg-white/20 backdrop-blur-sm text-white text-[10px] sm:text-xs font-semibold rounded-full border border-white/30"
               >
                 {tag}
               </span>

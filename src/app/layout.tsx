@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${poppins.className} antialiased min-h-screen bg-cover bg-no-repeat bg-center bg-fixed bg-[linear-gradient(to_top,rgba(0,0,0,0.4),rgba(0,0,0,0.7)),url('/images/bg.jpg')]`}
+        className={`${poppins.className} antialiased min-h-screen bg-cover bg-no-repeat bg-center bg-fixed bg-[linear-gradient(to_top,rgba(0,0,0,0.8),rgba(0,0,0,0.95)),url('/images/bg.jpg')]`}
       >
         <Navbar />
         {children}

@@ -49,11 +49,11 @@ const categories: Category[] = [
 
 export default function CategoryCards() {
   return (
-    <div className="w-full max-w-6xl mt-8 mb-10">
-      <h2 className="text-3xl font-bold text-white text-center mb-6">
+    <div className="w-full max-w-6xl mt-6 md:mt-8 mb-6 md:mb-10 px-2 md:px-0">
+      <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4 md:mb-6">
         Browse by Category
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
         {categories.map((category) => (
           <Link
             key={category.name}
@@ -65,7 +65,7 @@ export default function CategoryCards() {
             <div
               className="
               relative overflow-hidden rounded-xl shadow-lg
-              h-32
+              h-28 sm:h-32
               transform transition-all duration-300
               hover:scale-105 hover:shadow-2xl
             "
@@ -78,11 +78,11 @@ export default function CategoryCards() {
               />
 
               {/* Gradient Overlay */}
-              <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/70 to-black/30" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/30" />
 
               {/* Content */}
-              <div className="relative h-full flex flex-col items-center justify-center text-white z-10">
-                <h3 className="text-2xl font-bold text-center tracking-wider">
+              <div className="relative h-full flex flex-col items-center justify-center text-white z-10 px-2">
+                <h3 className="text-base sm:text-lg md:text-2xl font-bold text-center tracking-wider">
                   {category.name}
                 </h3>
               </div>
