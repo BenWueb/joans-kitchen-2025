@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import TopBanner from "@/components/ui/TopBanner";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -18,11 +19,16 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Hardcode this message; set to "" to hide the banner.
+  const TOP_BANNER_MESSAGE =
+    "Welcome to Joan's Kitchen — new features shipping weekly.";
+
   return (
     <html lang="en">
       <body
         className={`${poppins.className} antialiased min-h-screen bg-cover bg-no-repeat bg-center bg-fixed bg-[linear-gradient(to_top,rgba(0,0,0,0.8),rgba(0,0,0,0.95)),url('/images/bg.jpg')]`}
       >
+        <TopBanner message={TOP_BANNER_MESSAGE} />
         <Navbar />
         {children}
       </body>

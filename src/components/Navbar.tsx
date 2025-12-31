@@ -64,7 +64,7 @@ function Navbar() {
   };
 
   return (
-    <div className="fixed top-0 w-full z-50">
+    <div className="fixed top-9 w-full z-50">
       <nav className="relative flex justify-between items-center max-w-7xl mx-auto w-full text-white z-10 px-4 py-2">
         <h5>
           <Link href="/">

@@ -9,20 +9,16 @@ function initFirebaseAdmin() {
 
   let serviceAccount: any = null;
 
-  // Option 1: Try to parse service account JSON from env var
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    try {
-      // Handle both escaped and unescaped JSON strings
-      const jsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/\\n/g, "\n");
-      serviceAccount = JSON.parse(jsonString);
-    } catch (error) {
-      console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", error);
-      throw new Error(
-        "Invalid FIREBASE_SERVICE_ACCOUNT_KEY JSON. Please check your .env.local file."
-      );
-    }
+  // Preferred: Use individual environment variables (best for Vercel)
+  // NOTE: Use server-only vars; do NOT rely on NEXT_PUBLIC_* here.
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    serviceAccount = {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    };
   }
-  // Option 2: Use individual environment variables
+  // Back-compat: allow using NEXT_PUBLIC_FIREBASE_PROJECTID if FIREBASE_PROJECT_ID isn't set
   else if (
     process.env.NEXT_PUBLIC_FIREBASE_PROJECTID &&
     process.env.FIREBASE_CLIENT_EMAIL &&
@@ -34,7 +30,20 @@ function initFirebaseAdmin() {
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     };
   }
-  // Option 3: Try to load from service account file path
+  // Legacy: Try to parse service account JSON from env var
+  else if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+    try {
+      // Handle both escaped and unescaped JSON strings
+      const jsonString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY.replace(/\\n/g, "\n");
+      serviceAccount = JSON.parse(jsonString);
+    } catch (error) {
+      console.error("Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:", error);
+      throw new Error(
+        "Invalid FIREBASE_SERVICE_ACCOUNT_KEY JSON. Please check your .env.local / Vercel env var."
+      );
+    }
+  }
+  // Legacy: Try to load from service account file path (not recommended on Vercel)
   else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
     try {
       const fs = require("fs");
@@ -77,9 +86,10 @@ function initFirebaseAdmin() {
   if (!serviceAccount) {
     throw new Error(
       "Firebase Admin credentials not found. Please set one of:\n" +
+      "  - FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY (recommended)\n" +
+      "  - FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY + NEXT_PUBLIC_FIREBASE_PROJECTID (back-compat)\n" +
       "  - FIREBASE_SERVICE_ACCOUNT_KEY (JSON string)\n" +
-      "  - FIREBASE_SERVICE_ACCOUNT_PATH (file path)\n" +
-      "  - FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY + NEXT_PUBLIC_FIREBASE_PROJECTID"
+      "  - FIREBASE_SERVICE_ACCOUNT_PATH (file path)"
     );
   }
 
