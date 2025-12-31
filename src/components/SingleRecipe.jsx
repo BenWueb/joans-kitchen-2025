@@ -130,11 +130,12 @@ function SingleRecipe({
         title,
         tags,
         imageUrls,
+        unsplashImageUrl,
       });
       setRecipeImage(url);
     };
     loadImage();
-  }, [recipeId, title, tags, imageUrls]);
+  }, [recipeId, title, tags, imageUrls, unsplashImageUrl]);
 
   // Remove early return - let page display even if recipe is empty
   // Split steps - handle empty recipe gracefully
