@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAuth } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { MdClose, MdAddPhotoAlternate } from "react-icons/md";
 import Navbar from "@/components/Navbar";
 import { useCreateRecipe } from "@/hooks/useCreateRecipe";
+import { useRecipePhotos } from "@/hooks/useRecipePhotos";
+import { usePhotoUpload } from "@/hooks/usePhotoUpload";
+import { usePhotoModal } from "@/hooks/usePhotoModal";
+import { useDeletePhotoModal } from "@/hooks/useDeletePhotoModal";
+import RecipePhotos from "@/components/recipe/RecipePhotos";
+import DeletePhotoModal from "@/components/recipe/modals/DeletePhotoModal";
+import PhotoViewerModal from "@/components/recipe/modals/PhotoViewerModal";
+import { FILE_LIMITS } from "@/lib/constants";
+import { recipeToUrl } from "@/utils/recipeUrl";
 
 function CreateRecipe() {
   const {
@@ -13,17 +21,15 @@ function CreateRecipe() {
     submitting,
     error,
     success,
-    selectedFiles,
-    previewUrls,
-    uploadingPhotos,
-    fileInputRef,
     onChange,
     handleRecipeChange,
-    onSubmit,
-    handleFileSelect,
-    removePhoto,
+    recipeId,
+    createRecipeDoc,
   } = useCreateRecipe();
   const router = useRouter();
+  const [localPhotos, setLocalPhotos] = useState<any[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const createdRecipeIdRef = useRef<string | null>(null);
 
   // Check if user is logged in
   useEffect(() => {
@@ -36,8 +42,99 @@ function CreateRecipe() {
         localStorage.setItem("returnUrl", "/create_recipe");
       }
       router.push("/login");
+    } else {
+      setCurrentUserId(user.uid);
     }
   }, [router]);
+
+  // Photo hooks (same interface as SingleRecipe)
+  const {
+    uploadingPhoto,
+    photoError,
+    uploadPhoto,
+    handleDeletePhoto,
+    savePhotoOrder,
+    setPhotoError,
+  } = useRecipePhotos({
+    recipeId,
+    ensureRecipeId: async () => {
+      if (createdRecipeIdRef.current) return createdRecipeIdRef.current;
+      if (recipeId) return recipeId;
+      throw new Error("Recipe not created yet");
+    },
+  });
+
+  const {
+    fileInputRef,
+    handleFileSelect,
+    items: uploadItems,
+    remainingSlots,
+    uploadAll,
+    retryItem,
+    removeItem,
+    clearAll,
+  } = usePhotoUpload(
+    uploadPhoto,
+    setPhotoError,
+    Math.max(0, FILE_LIMITS.MAX_PHOTOS_PER_RECIPE - (localPhotos?.length || 0))
+  );
+
+  const { showPhotoModal, selectedIndex, openPhotoAt, closePhotoModal } =
+    usePhotoModal();
+
+  const {
+    showDeleteModal,
+    photoToDelete,
+    handleDeletePhotoClick,
+    confirmDeletePhoto,
+    cancelDeletePhoto,
+  } = useDeletePhotoModal(handleDeletePhoto);
+
+  const handlePhotoUploaded = (result: any) => {
+    setLocalPhotos((prev) => [...prev, result]);
+  };
+
+  const handlePhotoDeleted = (photo: any) => {
+    setLocalPhotos((prev) => prev.filter((p) => p.url !== photo.url));
+  };
+
+  const handleSetCoverPhoto = async (photo: any) => {
+    const next = [photo, ...localPhotos.filter((p) => p.url !== photo.url)];
+    setLocalPhotos(next);
+    await savePhotoOrder(next);
+  };
+
+  const handleMovePhoto = async (photo: any, direction: "left" | "right") => {
+    const idx = localPhotos.findIndex((p) => p.url === photo.url);
+    if (idx === -1) return;
+    const swapWith = direction === "left" ? idx - 1 : idx + 1;
+    if (swapWith < 0 || swapWith >= localPhotos.length) return;
+    const next = [...localPhotos];
+    const tmp = next[idx];
+    next[idx] = next[swapWith];
+    next[swapWith] = tmp;
+    setLocalPhotos(next);
+    await savePhotoOrder(next);
+  };
+
+  const handleCreateRecipeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    try {
+      const { id, formattedTitle } = await createRecipeDoc();
+      createdRecipeIdRef.current = id;
+
+      // Upload queued photos (staged) after the recipe doc exists
+      if (uploadItems.length > 0) {
+        await uploadAll(handlePhotoUploaded);
+      }
+
+      // Navigate to the newly created recipe
+      router.push(`/${recipeToUrl(formattedTitle)}`);
+    } catch {
+      // errors are handled inside the hook / upload hooks
+    }
+  };
 
   return (
     <>
@@ -61,7 +158,7 @@ function CreateRecipe() {
               </div>
             )}
 
-            <form className="space-y-6" onSubmit={onSubmit}>
+            <form className="space-y-6" onSubmit={handleCreateRecipeSubmit}>
               {/* Recipe Title */}
               <div>
                 <label
@@ -142,88 +239,43 @@ function CreateRecipe() {
                 />
               </div>
 
-              {/* Photo Upload Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Photos (Optional)
-                </label>
-                <div className="space-y-3">
-                  {/* File Input */}
-                  <div className="flex items-center gap-3">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileSelect}
-                      disabled={submitting || selectedFiles.length >= 5}
-                      className="hidden"
-                      id="photo-upload"
-                    />
-                    <label
-                      htmlFor="photo-upload"
-                      className={`flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md cursor-pointer transition-colors ${
-                        submitting || selectedFiles.length >= 5
-                          ? "bg-gray-100 cursor-not-allowed"
-                          : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <MdAddPhotoAlternate className="w-5 h-5 text-teal-600" />
-                      <span className="text-sm text-gray-700">
-                        {selectedFiles.length >= 5
-                          ? "Max 5 photos"
-                          : "Add Photos"}
-                      </span>
-                    </label>
-                    <span className="text-xs text-gray-500">
-                      {selectedFiles.length}/5 photos
-                    </span>
-                  </div>
-
-                  {/* Photo Previews */}
-                  {previewUrls.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                      {previewUrls.map((url, index) => (
-                        <div
-                          key={index}
-                          className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group"
-                        >
-                          <img
-                            src={url}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(index)}
-                            disabled={submitting}
-                            className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                          >
-                            <MdClose className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    Upload up to 5 photos. Max 5MB per photo.
-                  </p>
-                </div>
-              </div>
+              {/* Photo Upload Section (same UI as SingleRecipe) */}
+              <RecipePhotos
+                photos={localPhotos}
+                currentUserId={currentUserId}
+                isAdmin={false}
+                canManagePhotos={true}
+                uploadingPhoto={uploadingPhoto}
+                photoError={photoError}
+                fileInputRef={fileInputRef}
+                onFileSelect={handleFileSelect}
+                uploadItems={uploadItems}
+                remainingSlots={remainingSlots}
+                onUploadAll={uploadAll}
+                showUploadAll={false}
+                onRetryUpload={retryItem}
+                onRemoveUploadItem={removeItem}
+                onClearUploads={clearAll}
+                onPhotoClick={(_, index) => openPhotoAt(index)}
+                onDeletePhotoClick={handleDeletePhotoClick}
+                onPhotoUploaded={handlePhotoUploaded}
+                onSetCoverPhoto={handleSetCoverPhoto}
+                onMovePhoto={handleMovePhoto}
+              />
 
               {/* Submit Button */}
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  disabled={submitting || uploadingPhotos}
+                  disabled={submitting || uploadingPhoto}
                   className={`flex-1 font-medium py-2.5 rounded-md transition-colors ${
-                    submitting || uploadingPhotos
+                    submitting || uploadingPhoto
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-teal-600 hover:bg-teal-700 text-white"
                   }`}
                 >
                   {submitting
-                    ? uploadingPhotos
+                    ? uploadingPhoto
                       ? "Uploading Photos..."
                       : "Creating Recipe..."
                     : "Create Recipe"}
@@ -238,6 +290,26 @@ function CreateRecipe() {
                 </button>
               </div>
             </form>
+
+            {/* Photo Modals */}
+            <DeletePhotoModal
+              show={showDeleteModal}
+              photo={photoToDelete}
+              uploadingPhoto={uploadingPhoto}
+              onCancel={cancelDeletePhoto}
+              onConfirm={() =>
+                confirmDeletePhoto((photo) => {
+                  handlePhotoDeleted(photo);
+                })
+              }
+            />
+
+            <PhotoViewerModal
+              show={showPhotoModal}
+              photos={localPhotos}
+              initialIndex={selectedIndex ?? 0}
+              onClose={closePhotoModal}
+            />
           </div>
         </div>
       </div>

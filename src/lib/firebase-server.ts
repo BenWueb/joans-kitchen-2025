@@ -5,6 +5,44 @@ import type { Recipe, FavoritedRecipe } from "./types";
 // Re-export shared types for convenience in server-component imports
 export type { Recipe, FavoritedRecipe } from "./types";
 
+function normalizeTimestamp(ts: any):
+  | { seconds: number; nanoseconds: number }
+  | undefined {
+  if (!ts) return undefined;
+
+  const seconds =
+    typeof ts.seconds === "number"
+      ? ts.seconds
+      : typeof ts._seconds === "number"
+      ? ts._seconds
+      : undefined;
+  const nanoseconds =
+    typeof ts.nanoseconds === "number"
+      ? ts.nanoseconds
+      : typeof ts._nanoseconds === "number"
+      ? ts._nanoseconds
+      : undefined;
+
+  if (typeof seconds === "number" && typeof nanoseconds === "number") {
+    return { seconds, nanoseconds };
+  }
+
+  if (typeof ts.toDate === "function") {
+    const d: Date = ts.toDate();
+    return { seconds: Math.floor(d.getTime() / 1000), nanoseconds: 0 };
+  }
+
+  return undefined;
+}
+
+function normalizeRecipe(id: string, data: any): Recipe {
+  return {
+    id,
+    ...(data || {}),
+    created: normalizeTimestamp(data?.created),
+  } as Recipe;
+}
+
 /**
  * Get a single recipe by ID (server-side)
  */
@@ -19,10 +57,7 @@ export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
       return null;
     }
 
-    return {
-      id: recipeDoc.id,
-      ...recipeDoc.data(),
-    } as Recipe;
+    return normalizeRecipe(recipeDoc.id, recipeDoc.data());
   } catch (error) {
     console.error("Error fetching recipe:", error);
     return null;
@@ -51,10 +86,7 @@ export async function getRecipesByIds(recipeIds: string[]): Promise<Recipe[]> {
 
       docs.forEach((doc) => {
         if (doc.exists) {
-          allRecipes.push({
-            id: doc.id,
-            ...doc.data(),
-          } as Recipe);
+          allRecipes.push(normalizeRecipe(doc.id, doc.data()));
         }
       });
     }
@@ -86,10 +118,7 @@ export async function getRecipeByTitle(recipeName: string) {
     }
 
     const doc = recipesSnapshot.docs[0];
-    return {
-      id: doc.id,
-      ...doc.data(),
-    } as Recipe;
+    return normalizeRecipe(doc.id, doc.data());
   } catch (error) {
     console.error("Error fetching recipe by title:", error);
     return null;
@@ -216,7 +245,7 @@ export async function getRecipesByCategory(opts: {
       .get();
 
     const recipes = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as Recipe))
+      .map((d) => normalizeRecipe(d.id, d.data()))
       .filter((r) => (excludeId ? r.id !== excludeId : true))
       .slice(0, limit);
 

@@ -10,7 +10,7 @@ import {
   arrayUnion,
   arrayRemove,
 } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "@/firestore.config";
 import {
   COLLECTIONS,
@@ -23,12 +23,33 @@ import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
 import type { Photo } from "@/lib/types";
 
 interface UseRecipePhotosProps {
-  recipeId: string;
+  recipeId?: string | null;
+  ensureRecipeId?: () => Promise<string>;
 }
 
 type UploadStage = "uploading" | "processing";
 
-export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
+// Extract storage path from Firebase Storage download URL
+function getStoragePathFromUrl(url: string): string | null {
+  // Firebase Storage download URL format:
+  // https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<ENCODED_PATH>?alt=media&token=...
+  try {
+    const marker = "/o/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    const rest = url.substring(idx + marker.length);
+    const encodedPath = rest.split("?")[0] || "";
+    if (!encodedPath) return null;
+    return decodeURIComponent(encodedPath);
+  } catch {
+    return null;
+  }
+}
+
+export function useRecipePhotos({
+  recipeId,
+  ensureRecipeId,
+}: UseRecipePhotosProps) {
   const router = useRouter();
   const [activeOps, setActiveOps] = useState(0);
   const [photoError, setPhotoError] = useState("");
@@ -55,6 +76,13 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
         return null;
       }
 
+      // Resolve recipeId lazily (create-recipe can create a draft doc on demand)
+      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      if (!finalRecipeId) {
+        setPhotoError("Recipe not ready yet. Please try again.");
+        return null;
+      }
+
       // Get user's name from Firestore
       const userDocRef = doc(db, COLLECTIONS.USERS, user.uid);
       const userDoc = await getDoc(userDocRef);
@@ -65,12 +93,12 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
       // Create unique filename
       const timestamp = Date.now();
       const fileExtension = file.name.split(".").pop();
-      const fileName = `${recipeId}_${timestamp}.${fileExtension}`;
+      const fileName = `${finalRecipeId}_${timestamp}.${fileExtension}`;
 
       // Upload to Firebase Storage
       const storageRef = ref(
         storage,
-        `${STORAGE_PATHS.RECIPE_PHOTOS}/${recipeId}/${fileName}`
+        `${STORAGE_PATHS.RECIPE_PHOTOS}/${finalRecipeId}/${fileName}`
       );
       // Upload with progress
       opts?.onStage?.("uploading");
@@ -103,7 +131,7 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
         try {
           const resizedRef = ref(
             storage,
-            `${STORAGE_PATHS.RECIPE_PHOTOS}/${recipeId}/${resizedFileName}`
+            `${STORAGE_PATHS.RECIPE_PHOTOS}/${finalRecipeId}/${resizedFileName}`
           );
           photoUrl = await getDownloadURL(resizedRef);
           break; // Successfully got the resized image
@@ -136,7 +164,7 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
       };
 
       // Add to Firestore
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
+      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
       await updateDoc(recipeRef, {
         photos: arrayUnion(photoObject),
       });
@@ -158,12 +186,29 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
     setPhotoError("");
 
     try {
-      // Extract filename from URL if possible, or use photo metadata
-      // For now, we'll just remove from Firestore since storage cleanup
-      // would require tracking the exact file path
+      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      if (!finalRecipeId) {
+        setPhotoError("Recipe not ready yet. Please try again.");
+        return false;
+      }
+
+      // Delete from Firebase Storage (the resized image)
+      if (photo.url) {
+        const storagePath = getStoragePathFromUrl(photo.url);
+        if (storagePath) {
+          try {
+            await deleteObject(ref(storage, storagePath));
+          } catch (err: any) {
+            // Ignore if already gone; otherwise log the error
+            if (err?.code !== "storage/object-not-found") {
+              logError("useRecipePhotos - delete from storage", err);
+            }
+          }
+        }
+      }
 
       // Remove from Firestore
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
+      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
       await updateDoc(recipeRef, {
         photos: arrayRemove(photo),
       });
@@ -184,7 +229,12 @@ export function useRecipePhotos({ recipeId }: UseRecipePhotosProps) {
     setActiveOps((c) => c + 1);
     setPhotoError("");
     try {
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
+      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      if (!finalRecipeId) {
+        setPhotoError("Recipe not ready yet. Please try again.");
+        return false;
+      }
+      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
       await updateDoc(recipeRef, { photos });
       router.refresh();
       return true;

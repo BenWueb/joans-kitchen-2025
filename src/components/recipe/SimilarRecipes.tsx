@@ -44,9 +44,9 @@ export default async function SimilarRecipes(props: {
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
-              <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/85 via-black/50 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/95 via-black/90 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 p-2 text-white">
-                <p className="text-xs font-semibold line-clamp-2">{r.title}</p>
+                <p className="text-md font-semibold line-clamp-3">{r.title}</p>
               </div>
             </Link>
           );

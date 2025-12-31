@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MdUpload, MdDelete, MdClose, MdMoreVert, MdStar, MdChevronLeft, MdChevronRight, MdContentCopy, MdOpenInNew } from "react-icons/md";
+import {
+  MdUpload,
+  MdDelete,
+  MdClose,
+  MdMoreVert,
+  MdStar,
+  MdChevronLeft,
+  MdChevronRight,
+  MdContentCopy,
+  MdOpenInNew,
+} from "react-icons/md";
 
 interface Photo {
   url: string;
@@ -31,6 +41,7 @@ interface RecipePhotosProps {
   uploadItems: UploadItem[];
   remainingSlots: number;
   onUploadAll: (callback: (photo: Photo) => void) => void;
+  showUploadAll?: boolean;
   onRetryUpload: (id: string, callback: (photo: Photo) => void) => void;
   onRemoveUploadItem: (id: string) => void;
   onClearUploads: () => void;
@@ -53,6 +64,7 @@ export default function RecipePhotos({
   uploadItems,
   remainingSlots,
   onUploadAll,
+  showUploadAll = true,
   onRetryUpload,
   onRemoveUploadItem,
   onClearUploads,
@@ -97,6 +109,7 @@ export default function RecipePhotos({
         <h5 className="text-lg font-bold text-gray-700">Photos</h5>
         {currentUserId && remainingSlots > 0 && (
           <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-md transition-colors"
             disabled={uploadingPhoto}
@@ -125,18 +138,22 @@ export default function RecipePhotos({
               Ready to upload ({uploadItems.length})
             </p>
             <div className="flex gap-2">
+              {showUploadAll && (
+                <button
+                  type="button"
+                  onClick={() => onUploadAll(onPhotoUploaded)}
+                  disabled={uploadingPhoto}
+                  aria-label="Upload all"
+                  className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                >
+                  <MdUpload className="w-5 h-5" />
+                  <span className="hidden sm:inline">
+                    {uploadingPhoto ? "Uploading..." : "Upload All"}
+                  </span>
+                </button>
+              )}
               <button
-                onClick={() => onUploadAll(onPhotoUploaded)}
-                disabled={uploadingPhoto}
-                aria-label="Upload all"
-                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-              >
-                <MdUpload className="w-5 h-5" />
-                <span className="hidden sm:inline">
-                  {uploadingPhoto ? "Uploading..." : "Upload All"}
-                </span>
-              </button>
-              <button
+                type="button"
                 onClick={onClearUploads}
                 disabled={uploadingPhoto}
                 aria-label="Clear uploads"
@@ -183,7 +200,9 @@ export default function RecipePhotos({
                   <div className="h-2 w-full bg-gray-200 rounded overflow-hidden">
                     <div
                       className="h-full bg-teal-600 transition-all duration-150"
-                      style={{ width: `${Math.min(100, Math.max(0, item.progress))}%` }}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, item.progress))}%`,
+                      }}
                     />
                   </div>
                   {item.error && (
@@ -196,6 +215,7 @@ export default function RecipePhotos({
                 <div className="flex flex-col gap-2">
                   {item.status === "error" && (
                     <button
+                      type="button"
                       onClick={() => onRetryUpload(item.id, onPhotoUploaded)}
                       disabled={uploadingPhoto}
                       className="text-xs text-teal-700 hover:text-teal-800"
@@ -204,6 +224,7 @@ export default function RecipePhotos({
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={() => onRemoveUploadItem(item.id)}
                     disabled={uploadingPhoto}
                     className="text-xs text-gray-600 hover:text-gray-800"
@@ -241,6 +262,7 @@ export default function RecipePhotos({
 
               {/* Clickable overlay to view in modal */}
               <button
+                type="button"
                 onClick={() => onPhotoClick(photo, index)}
                 className="absolute inset-0 z-0 cursor-pointer"
                 title="View photo"
@@ -271,9 +293,15 @@ export default function RecipePhotos({
               </div>
 
               {/* Actions menu */}
-              <div className="absolute top-2 left-2 z-20" data-photo-menu="true">
+              <div
+                className="absolute top-2 left-2 z-20"
+                data-photo-menu="true"
+              >
                 <button
-                  onClick={() => setOpenMenuIndex(openMenuIndex === index ? null : index)}
+                  type="button"
+                  onClick={() =>
+                    setOpenMenuIndex(openMenuIndex === index ? null : index)
+                  }
                   className="p-2 bg-black/50 hover:bg-black/60 text-white rounded-full shadow-lg"
                   aria-label="Photo actions"
                 >
@@ -282,6 +310,7 @@ export default function RecipePhotos({
                 {openMenuIndex === index && (
                   <div className="absolute mt-2 w-44 bg-white rounded-md shadow-xl border border-gray-200 overflow-hidden">
                     <button
+                      type="button"
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
                         setOpenMenuIndex(null);
@@ -291,6 +320,7 @@ export default function RecipePhotos({
                       <MdOpenInNew className="w-4 h-4" /> View
                     </button>
                     <button
+                      type="button"
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
                         setOpenMenuIndex(null);
@@ -300,6 +330,7 @@ export default function RecipePhotos({
                       <MdOpenInNew className="w-4 h-4" /> Open
                     </button>
                     <button
+                      type="button"
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                       onClick={() => {
                         setOpenMenuIndex(null);
@@ -312,6 +343,7 @@ export default function RecipePhotos({
                       <>
                         <div className="h-px bg-gray-200" />
                         <button
+                          type="button"
                           className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                           onClick={() => {
                             setOpenMenuIndex(null);
@@ -321,6 +353,7 @@ export default function RecipePhotos({
                           <MdStar className="w-4 h-4" /> Set cover
                         </button>
                         <button
+                          type="button"
                           className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                           onClick={() => {
                             setOpenMenuIndex(null);
@@ -330,6 +363,7 @@ export default function RecipePhotos({
                           <MdChevronLeft className="w-4 h-4" /> Move left
                         </button>
                         <button
+                          type="button"
                           className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                           onClick={() => {
                             setOpenMenuIndex(null);
@@ -345,8 +379,10 @@ export default function RecipePhotos({
               </div>
 
               {/* Delete button */}
-              {(isAdmin || (currentUserId && currentUserId === photo.addedByUserId)) && (
+              {(isAdmin ||
+                (currentUserId && currentUserId === photo.addedByUserId)) && (
                 <button
+                  type="button"
                   onClick={() => onDeletePhotoClick(photo)}
                   disabled={uploadingPhoto}
                   className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-lg z-20"
@@ -358,10 +394,11 @@ export default function RecipePhotos({
             </div>
           ))
         ) : (
-          <p className="text-gray-500 text-sm italic col-span-full">No photos yet</p>
+          <p className="text-gray-500 text-sm italic col-span-full">
+            No photos yet
+          </p>
         )}
       </div>
     </div>
   );
 }
-

@@ -45,7 +45,7 @@ async function RecentlyFavoritedData() {
                     {recipe.title}
                   </h3>
                   <p className="text-[10px] sm:text-xs text-gray-300 text-center line-clamp-2">
-                    Favorited by {recipe.favoritedBy}
+                    ❤️ by {recipe.favoritedBy}
                     {timeAgo && <span className="block">{timeAgo}</span>}
                   </p>
                 </div>

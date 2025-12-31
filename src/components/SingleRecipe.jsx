@@ -461,6 +461,19 @@ function SingleRecipe({
         </div>
       )}
 
+      {/* Owner actions */}
+      {isOwner && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            handleDeleteRecipeClick(recipeId, localTitle, e);
+          }}
+          className=" w-full inline-flex items-center justify-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+        >
+          Delete Recipe
+        </button>
+      )}
+
       {/* Modals */}
       <DeletePhotoModal
         show={showDeleteModal}

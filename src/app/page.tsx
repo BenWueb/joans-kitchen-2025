@@ -35,8 +35,8 @@ function Main() {
                     "wf0nKK44FBLgFs1z8B6p",
                     "vbfbxujDRIEQOvrt5m6C",
                     "IY3hqa7hEga7UAtT68kh",
-                    "recipe-id-4",
-                    "recipe-id-5",
+                    "oqNU1rs8TJ6T1vWRAUKk",
+                    "2D2GxIwIthxRe3k42Pcb",
                   ]}
                 />
               </Suspense>
