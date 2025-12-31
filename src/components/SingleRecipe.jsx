@@ -117,6 +117,41 @@ function SingleRecipe({
       "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
   );
 
+  // Admin mode - check Firebase user document for isAdmin flag
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [unsplashPhotographer, setUnsplashPhotographer] = useState(null);
+  const [unsplashPhotographerUrl, setUnsplashPhotographerUrl] = useState(null);
+
+  // Check if current user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (currentUserId) {
+        try {
+          const { doc, getDoc } = await import("firebase/firestore");
+          const { db } = await import("@/firestore.config");
+          const userDoc = await getDoc(doc(db, "Users", currentUserId));
+          if (userDoc.exists() && userDoc.data().isAdmin === true) {
+            setIsAdmin(true);
+          }
+        } catch (err) {
+          console.error("Error checking admin status:", err);
+        }
+      }
+    };
+    checkAdmin();
+  }, [currentUserId]);
+
+  // Admin editing states
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingIngredients, setIsEditingIngredients] = useState(false);
+  const [isEditingSteps, setIsEditingSteps] = useState(false);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(title || "");
+  const [editedIngredients, setEditedIngredients] = useState(ingredients || "");
+  const [editedSteps, setEditedSteps] = useState(recipe || "");
+  const [editedTags, setEditedTags] = useState(tags?.join(", ") || "");
+  const [savingField, setSavingField] = useState(false);
+
   // Update local photos when photos prop changes
   useEffect(() => {
     setLocalPhotos(photos || []);
@@ -129,13 +164,83 @@ function SingleRecipe({
         id: recipeId,
         title,
         tags,
-        imageUrls,
+        photos,
         unsplashImageUrl,
       });
       setRecipeImage(url);
     };
     loadImage();
-  }, [recipeId, title, tags, imageUrls, unsplashImageUrl]);
+  }, [recipeId, title, tags, photos, unsplashImageUrl]);
+
+  // Admin function to save recipe field updates
+  const handleSaveField = async (field, value) => {
+    setSavingField(true);
+    setError("");
+    try {
+      const { doc, updateDoc } = await import("firebase/firestore");
+      const { db } = await import("@/firestore.config");
+
+      const recipeRef = doc(db, "recipes", recipeId);
+      const updateData = {};
+
+      if (field === "title") {
+        updateData.title = value;
+      } else if (field === "ingredients") {
+        updateData.ingredients = value;
+      } else if (field === "recipe") {
+        updateData.recipe = value;
+      } else if (field === "tags") {
+        updateData.tags = value
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t);
+      }
+
+      await updateDoc(recipeRef, updateData);
+
+      // Reset editing state
+      if (field === "title") setIsEditingTitle(false);
+      if (field === "ingredients") setIsEditingIngredients(false);
+      if (field === "recipe") setIsEditingSteps(false);
+      if (field === "tags") setIsEditingTags(false);
+
+      // Reload page to show updates
+      window.location.reload();
+    } catch (err) {
+      console.error("Error updating recipe:", err);
+      setError(`Failed to update ${field}: ${err.message}`);
+    } finally {
+      setSavingField(false);
+    }
+  };
+
+  // Delete stored Unsplash image data
+  const handleDeleteUnsplashCache = async () => {
+    if (!isAdmin) return;
+
+    setSavingField(true);
+    try {
+      const { doc, updateDoc, deleteField } = await import(
+        "firebase/firestore"
+      );
+      const { db } = await import("@/firestore.config");
+
+      const recipeRef = doc(db, "recipes", recipeId);
+      await updateDoc(recipeRef, {
+        unsplashImageUrl: deleteField(),
+        unsplashPhotographer: deleteField(),
+        unsplashPhotographerUrl: deleteField(),
+      });
+
+      // Reload to show changes
+      window.location.reload();
+    } catch (err) {
+      console.error("Error deleting Unsplash cache:", err);
+      setError(`Failed to delete Unsplash data: ${err.message}`);
+    } finally {
+      setSavingField(false);
+    }
+  };
 
   // Remove early return - let page display even if recipe is empty
   // Split steps - handle empty recipe gracefully
@@ -189,9 +294,52 @@ function SingleRecipe({
         {/* Content */}
         <div className="relative z-10 p-8 lg:p-12 max-w-2xl w-full flex flex-col justify-between min-h-400px">
           <div>
-            <h1 className="text-4xl lg:text-5xl font-bold text-white mb-2 capitalize drop-shadow-lg leading-tight">
-              {title ? title.toLowerCase() : "Untitled Recipe"}
-            </h1>
+            {/* Title with admin edit */}
+            {isEditingTitle && isAdmin ? (
+              <div className="mb-4">
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  className="w-full p-3 text-4xl lg:text-5xl font-bold text-gray-900 bg-white/90 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Recipe title"
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleSaveField("title", editedTitle)}
+                    disabled={savingField}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    {savingField ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingTitle(false);
+                      setEditedTitle(title || "");
+                    }}
+                    disabled={savingField}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-4xl lg:text-5xl font-bold text-white capitalize drop-shadow-lg leading-tight">
+                  {title ? title.toLowerCase() : "Untitled Recipe"}
+                </h1>
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+                    title="Edit title"
+                  >
+                    <MdEdit className="w-5 h-5 text-white" />
+                  </button>
+                )}
+              </div>
+            )}
             {createdBy && (
               <p className="text-base text-white/90 mb-3">
                 by{" "}
@@ -218,6 +366,46 @@ function SingleRecipe({
                     {tag}
                   </span>
                 ))}
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsEditingTags(true)}
+                    className="px-3 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-xs font-semibold rounded-full border border-white/30"
+                    title="Edit tags"
+                  >
+                    <MdEdit className="w-3 h-3 inline mr-1" />
+                    Edit
+                  </button>
+                )}
+              </div>
+            )}
+            {isEditingTags && isAdmin && (
+              <div className="mt-3">
+                <input
+                  type="text"
+                  value={editedTags}
+                  onChange={(e) => setEditedTags(e.target.value)}
+                  className="w-full p-2 text-sm text-gray-900 bg-white/90 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder="Enter tags separated by commas"
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleSaveField("tags", editedTags)}
+                    disabled={savingField}
+                    className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded disabled:opacity-50"
+                  >
+                    {savingField ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingTags(false);
+                      setEditedTags(tags?.join(", ") || "");
+                    }}
+                    disabled={savingField}
+                    className="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -260,36 +448,118 @@ function SingleRecipe({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {ingredients && ingredients.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h5 className="text-xl font-bold text-gray-700 mb-4">
-              Ingredients
-            </h5>
-            <ul className="space-y-2">
-              {ingredients.split(/\n/gm).map((ing, index) => (
-                <li
-                  key={index}
-                  className="text-gray-600 flex items-start gap-2"
+            <div className="flex justify-between items-center mb-4">
+              <h5 className="text-xl font-bold text-gray-700">Ingredients</h5>
+              {isAdmin && !isEditingIngredients && (
+                <button
+                  onClick={() => setIsEditingIngredients(true)}
+                  className="text-teal-600 hover:text-teal-700"
+                  title="Edit ingredients"
                 >
-                  <span className="text-teal-600 font-bold">•</span>
-                  <span>{ing}</span>
-                </li>
-              ))}
-            </ul>
+                  <MdEdit className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {isEditingIngredients && isAdmin ? (
+              <div>
+                <textarea
+                  value={editedIngredients}
+                  onChange={(e) => setEditedIngredients(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-600 min-h-40"
+                  placeholder="Enter ingredients, one per line"
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() =>
+                      handleSaveField("ingredients", editedIngredients)
+                    }
+                    disabled={savingField}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    {savingField ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingIngredients(false);
+                      setEditedIngredients(ingredients || "");
+                    }}
+                    disabled={savingField}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {ingredients.split(/\n/gm).map((ing, index) => (
+                  <li
+                    key={index}
+                    className="text-gray-600 flex items-start gap-2"
+                  >
+                    <span className="text-teal-600 font-bold">•</span>
+                    <span>{ing}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
         {recipe && recipe.length > 0 && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h5 className="text-xl font-bold text-gray-700 mb-4">Steps</h5>
-            <ol className="space-y-3">
-              {steps.map((step, index) => (
-                <li key={index} className="text-gray-600 flex gap-3">
-                  <span className="font-bold text-teal-600 shrink-0">
-                    {index + 1}.
-                  </span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="flex justify-between items-center mb-4">
+              <h5 className="text-xl font-bold text-gray-700">Steps</h5>
+              {isAdmin && !isEditingSteps && (
+                <button
+                  onClick={() => setIsEditingSteps(true)}
+                  className="text-teal-600 hover:text-teal-700"
+                  title="Edit steps"
+                >
+                  <MdEdit className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+            {isEditingSteps && isAdmin ? (
+              <div>
+                <textarea
+                  value={editedSteps}
+                  onChange={(e) => setEditedSteps(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-600 min-h-40"
+                  placeholder="Enter steps with numbers (e.g., '1. First step 2. Second step')"
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={() => handleSaveField("recipe", editedSteps)}
+                    disabled={savingField}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    {savingField ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsEditingSteps(false);
+                      setEditedSteps(recipe || "");
+                    }}
+                    disabled={savingField}
+                    className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ol className="space-y-3">
+                {steps.map((step, index) => (
+                  <li key={index} className="text-gray-600 flex gap-3">
+                    <span className="font-bold text-teal-600 shrink-0">
+                      {index + 1}.
+                    </span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
           </div>
         )}
       </div>
@@ -571,6 +841,77 @@ function SingleRecipe({
           )}
         </div>
       </div>
+
+      {/* Unsplash Image Info Section - Admin Only */}
+      {isAdmin && unsplashImageUrl && (
+        <div className="bg-linear-to-br from-purple-100 via-indigo-50 to-purple-100 rounded-lg shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h5 className="text-lg font-bold text-gray-700">
+              Unsplash Image Info
+            </h5>
+            <button
+              onClick={handleDeleteUnsplashCache}
+              disabled={savingField}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-md transition-colors disabled:opacity-50"
+            >
+              <MdDelete className="w-4 h-4" />
+              Remove Image
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-4 bg-white rounded-md border border-gray-200">
+              <div className="mb-3">
+                <p className="text-sm font-semibold text-gray-700 mb-1">
+                  Image URL:
+                </p>
+                <a
+                  href={unsplashImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-teal-600 hover:text-teal-700 underline break-all"
+                >
+                  {unsplashImageUrl}
+                </a>
+              </div>
+
+              {unsplashPhotographer && (
+                <div className="mb-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Photographer:
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {unsplashPhotographer}
+                  </p>
+                </div>
+              )}
+
+              {unsplashPhotographerUrl && (
+                <div>
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    Photographer Profile:
+                  </p>
+                  <a
+                    href={unsplashPhotographerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-teal-600 hover:text-teal-700 underline break-all"
+                  >
+                    {unsplashPhotographerUrl}
+                  </a>
+                </div>
+              )}
+
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-500 italic">
+                  This is the stored Unsplash image URL for this recipe.
+                  Removing it will fetch a new image on next page load.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {imageUrls && imageUrls.length > 0 && (
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">

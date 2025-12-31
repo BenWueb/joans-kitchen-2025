@@ -5,7 +5,7 @@ interface Recipe {
   id?: string;
   title: string;
   tags?: string[];
-  imageUrls?: string[];
+  photos?: string[];
   unsplashImageUrl?: string;
 }
 
@@ -62,8 +62,8 @@ export const getOrFetchRecipeImage = async (
 
   try {
     // 1. Check if recipe already has user-uploaded images
-    if (recipe.imageUrls && recipe.imageUrls.length > 0) {
-      return recipe.imageUrls[0];
+    if (recipe.photos && recipe.photos.length > 0) {
+      return recipe.photos[0];
     }
 
     // 2. Check if recipe already has cached Unsplash URL in Firestore (priority)
