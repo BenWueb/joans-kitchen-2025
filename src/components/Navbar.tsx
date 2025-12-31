@@ -64,8 +64,8 @@ function Navbar() {
   };
 
   return (
-    <div className="fixed top-9 w-full z-50">
-      <nav className="relative flex justify-between items-center max-w-7xl mx-auto w-full text-white z-10 px-4 py-2">
+    <div className="backdrop-blur-sm fixed top-9 w-full z-50">
+      <nav className=" relative flex justify-between items-center max-w-7xl mx-auto w-full text-white z-10 px-4 py-2">
         <h5>
           <Link href="/">
             <div className="text-2xl font-bold text-primary">JK</div>
@@ -85,7 +85,7 @@ function Navbar() {
           {menuVisible && (
             <div
               ref={menuRef}
-              className="absolute min-h-fit right-0 top-0 h-full w-80 bg-white shadow-2xl rounded-lg flex flex-col z-50 border border-gray-200"
+              className=" absolute min-h-fit right-0 top-0 h-full w-80 bg-white shadow-2xl rounded-lg flex flex-col z-50 border border-gray-200"
             >
               <div className="flex justify-end px-4 py-2">
                 <div
