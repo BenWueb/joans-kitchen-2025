@@ -61,43 +61,13 @@ export const getOrFetchRecipeImage = async (
   const fallbackImage =
     "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
 
+  // Unsplash API is disabled: only use user-uploaded photos or fallback
   try {
-    // 1. Check if recipe already has user-uploaded images
     if (recipe.photos && recipe.photos.length > 0) {
       return recipe.photos[0];
     }
-
-    // 2. Check if recipe already has cached Unsplash URL in Firestore (priority)
-    if (recipe.unsplashImageUrl) {
-      return recipe.unsplashImageUrl;
-    }
-
-    // 3. Fetch from Unsplash
-    const query = `${recipe.title}`;
-    const imageData = await fetchUnsplashImage(query);
-
-    if (imageData) {
-      // Save to Firestore for future use
-      try {
-        const recipeRef = doc(db, "recipes", recipeId);
-        await updateDoc(recipeRef, {
-          unsplashImageUrl: imageData.url,
-          unsplashPhotographer: imageData.photographer,
-          unsplashPhotographerUrl: imageData.photographerUrl,
-        });
-        console.log(`Saved Unsplash image to Firestore for recipe ${recipeId}`);
-      } catch (error) {
-        console.error("Failed to save to Firestore:", error);
-        // Continue anyway, we have the image
-      }
-
-      return imageData.url;
-    }
-
-    // 4. Fallback to default image
     return fallbackImage;
   } catch (error) {
-    console.error("Error in getOrFetchRecipeImage:", error);
     return fallbackImage;
   }
 };
