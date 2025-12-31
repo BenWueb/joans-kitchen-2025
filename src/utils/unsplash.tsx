@@ -9,6 +9,7 @@ interface Recipe {
   imageUrls?: string[];
   unsplashImageUrl?: string;
 }
+console.log();
 
 // Fetch image from Unsplash API
 export const fetchUnsplashImage = async (
