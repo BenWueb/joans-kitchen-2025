@@ -117,7 +117,9 @@ function CreateRecipe() {
     await savePhotoOrder(next);
   };
 
-  const handleCreateRecipeSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateRecipeSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
     try {
@@ -247,7 +249,7 @@ function CreateRecipe() {
                 canManagePhotos={true}
                 uploadingPhoto={uploadingPhoto}
                 photoError={photoError}
-                fileInputRef={fileInputRef}
+                fileInputRef={fileInputRef as React.RefObject<HTMLInputElement>}
                 onFileSelect={handleFileSelect}
                 uploadItems={uploadItems}
                 remainingSlots={remainingSlots}
