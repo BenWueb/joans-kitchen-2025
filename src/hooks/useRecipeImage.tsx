@@ -22,10 +22,12 @@ export function useRecipeImage({
       unsplashImageUrl ||
       DEFAULT_RECIPE_IMAGE
   );
-  const [unsplashPhotographer, setUnsplashPhotographer] = useState<string | null>(null);
-  const [unsplashPhotographerUrl, setUnsplashPhotographerUrl] = useState<string | null>(
-    null
-  );
+  const [unsplashPhotographer, setUnsplashPhotographer] = useState<
+    string | null
+  >(null);
+  const [unsplashPhotographerUrl, setUnsplashPhotographerUrl] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const loadImage = async () => {
@@ -54,9 +56,18 @@ export function useRecipeImage({
         try {
           const { getRecipeClient } = await import("@/lib/firebase-client");
           const recipeData = await getRecipeClient(recipeId);
-          if (recipeData) {
-            setUnsplashPhotographer(recipeData.unsplashPhotographer || null);
-            setUnsplashPhotographerUrl(recipeData.unsplashPhotographerUrl || null);
+          if (
+            recipeData &&
+            typeof recipeData === "object" &&
+            "unsplashPhotographer" in recipeData &&
+            "unsplashPhotographerUrl" in recipeData
+          ) {
+            setUnsplashPhotographer(
+              (recipeData as any).unsplashPhotographer || null
+            );
+            setUnsplashPhotographerUrl(
+              (recipeData as any).unsplashPhotographerUrl || null
+            );
           }
         } catch (err) {
           // Ignore error, just don't update info
@@ -73,4 +84,3 @@ export function useRecipeImage({
     unsplashPhotographerUrl,
   };
 }
-
