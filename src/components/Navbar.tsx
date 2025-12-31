@@ -15,7 +15,7 @@ import {
 } from "react-icons/md";
 import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
-import { Logout } from "@/hooks/Logout";
+import { logout } from "@/utils/auth";
 import { auth } from "../firestore.config";
 
 function Navbar() {
@@ -51,7 +51,7 @@ function Navbar() {
 
   //Sign out
   const signOut = () => {
-    Logout(pathname); // Pass current path to store for later
+    logout(pathname); // Pass current path to store for later
     redirect("/");
   };
 

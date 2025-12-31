@@ -559,7 +559,7 @@ ul > li {
   color: white;
 }
 
-.tags-container {
+.category-container {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -567,10 +567,10 @@ ul > li {
   gap: 0.5rem;
 }
 
-.tags-container button {
+.category-container button {
   background-color: var(--secondary-dark);
 }
-.tags-container button:hover {
+.category-container button:hover {
   cursor: default;
   opacity: 1;
 }
@@ -639,7 +639,7 @@ ul > li {
   text-align: center;
 }
 
-.edit-recipe-tags-container {
+.edit-recipe-category-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 1rem;
@@ -1268,7 +1268,7 @@ ul > li {
     margin-bottom: 1rem;
   }
 
-  .edit-recipe-tags-container {
+  .edit-recipe-category-container {
     margin-bottom: 1rem;
   }
 

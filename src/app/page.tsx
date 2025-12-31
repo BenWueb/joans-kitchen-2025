@@ -1,10 +1,10 @@
-"use client";
-
 import { Josefin_Sans } from "next/font/google";
+import { Suspense } from "react";
 import RecipeCarousel from "@/components/RecipeCarousel";
 import HomeSearchBox from "@/components/HomeSearchBox";
 import CategoryCards from "@/components/CategoryCards";
 import RecentlyFavorited from "@/components/RecentlyFavorited";
+import { RecipeCarouselSkeleton } from "@/components/ui/Loading";
 
 const josefinSans = Josefin_Sans({
   subsets: ["latin"],
@@ -29,15 +29,17 @@ function Main() {
 
             {/* Recipe Carousel */}
             <div className="w-full mb-6 md:mb-10">
-              <RecipeCarousel
-                recipeIds={[
-                  "wf0nKK44FBLgFs1z8B6p",
-                  "vbfbxujDRIEQOvrt5m6C",
-                  "recipe-id-3",
-                  "recipe-id-4",
-                  "recipe-id-5",
-                ]}
-              />
+              <Suspense fallback={<RecipeCarouselSkeleton />}>
+                <RecipeCarousel
+                  recipeIds={[
+                    "wf0nKK44FBLgFs1z8B6p",
+                    "vbfbxujDRIEQOvrt5m6C",
+                    "IY3hqa7hEga7UAtT68kh",
+                    "recipe-id-4",
+                    "recipe-id-5",
+                  ]}
+                />
+              </Suspense>
             </div>
           </div>
 

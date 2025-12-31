@@ -1,17 +1,22 @@
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/firestore.config";
+/**
+ * Unsplash image utilities
+ * Note: Unsplash API is currently disabled - only using cached/fallback images
+ */
 
-interface Recipe {
+export interface RecipeImageData {
   id?: string;
   title: string;
-  tags?: string[];
   photos?: string[];
   imageUrls?: string[];
   unsplashImageUrl?: string;
 }
-console.log();
 
-// Fetch image from Unsplash API
+import { DEFAULT_RECIPE_IMAGE as FALLBACK_IMAGE } from "@/lib/constants";
+
+/**
+ * Fetch image from Unsplash API (currently disabled/unused)
+ * Kept for future use if Unsplash API is re-enabled
+ */
 export const fetchUnsplashImage = async (
   query: string
 ): Promise<{
@@ -54,52 +59,27 @@ export const fetchUnsplashImage = async (
   }
 };
 
-// Get or fetch recipe image with caching
+/**
+ * Get or fetch recipe image with caching
+ * Currently only uses user-uploaded photos or fallback (Unsplash API disabled)
+ */
 export const getOrFetchRecipeImage = async (
   recipeId: string,
-  recipe: Recipe
+  recipe: RecipeImageData
 ): Promise<string> => {
-  const fallbackImage =
-    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
-
-  // Unsplash API is disabled: only use user-uploaded photos or fallback
   try {
+    // Priority: user-uploaded photos > cached unsplash > fallback
     if (recipe.photos && recipe.photos.length > 0) {
       return recipe.photos[0];
     }
-    return fallbackImage;
+    
+    if (recipe.unsplashImageUrl) {
+      return recipe.unsplashImageUrl;
+    }
+    
+    return FALLBACK_IMAGE;
   } catch (error) {
-    return fallbackImage;
+    console.error("Error getting recipe image:", error);
+    return FALLBACK_IMAGE;
   }
 };
-
-// Client-side hook for fetching images
-export const useRecipeImage = (recipeId: string, recipe: Recipe) => {
-  const [imageUrl, setImageUrl] = React.useState<string>(
-    recipe.imageUrls?.[0] ||
-      recipe.unsplashImageUrl ||
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
-  );
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    const loadImage = async () => {
-      // Skip if we already have an image
-      if (recipe.imageUrls?.[0] || recipe.unsplashImageUrl) {
-        return;
-      }
-
-      setLoading(true);
-      const url = await getOrFetchRecipeImage(recipeId, recipe);
-      setImageUrl(url);
-      setLoading(false);
-    };
-
-    loadImage();
-  }, [recipeId, recipe]);
-
-  return { imageUrl, loading };
-};
-
-// Add React import for the hook
-import React from "react";

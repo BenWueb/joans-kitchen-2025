@@ -4,22 +4,22 @@ import { useState } from "react";
 
 export const usePhotoModal = () => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const handlePhotoClick = (photo: any) => {
-    setSelectedPhoto(photo);
+  const openPhotoAt = (index: number) => {
+    setSelectedIndex(index);
     setShowPhotoModal(true);
   };
 
   const closePhotoModal = () => {
     setShowPhotoModal(false);
-    setSelectedPhoto(null);
+    setSelectedIndex(null);
   };
 
   return {
     showPhotoModal,
-    selectedPhoto,
-    handlePhotoClick,
+    selectedIndex,
+    openPhotoAt,
     closePhotoModal,
   };
 };

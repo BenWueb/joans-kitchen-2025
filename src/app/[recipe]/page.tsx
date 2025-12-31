@@ -1,14 +1,16 @@
 import Navbar from "@/components/Navbar";
-import getRecipe from "@/hooks/getRecipe";
 import SingleRecipe from "@/components/SingleRecipe";
 import { urlToRecipe } from "@/utils/recipeUrl";
+import { getRecipeByTitle } from "@/lib/firebase-server";
+import { Suspense } from "react";
+import SimilarRecipes from "@/components/recipe/SimilarRecipes";
 
 async function Recipe({ params }: { params: { recipe: string } }) {
   const slug = await params;
   const recipeName = urlToRecipe(slug.recipe);
-  const data = await getRecipe(recipeName);
+  const recipe = await getRecipeByTitle(recipeName);
 
-  if (!data || data.docs.length === 0) {
+  if (!recipe) {
     return (
       <>
         <Navbar />
@@ -26,16 +28,13 @@ async function Recipe({ params }: { params: { recipe: string } }) {
     );
   }
 
-  const recipe = data.docs[0].data();
-  const recipeId = data.docs[0].id;
-
   return (
     <>
       <Navbar />
       <div className="min-h-screen px-4 pt-20 pb-8">
         <div className="max-w-6xl mx-auto">
           <SingleRecipe
-            recipeId={recipeId}
+            recipeId={recipe.id}
             title={recipe.title}
             ingredients={recipe.ingredients}
             recipe={recipe.recipe}
@@ -46,13 +45,18 @@ async function Recipe({ params }: { params: { recipe: string } }) {
             createdByUserId={recipe.createdByUserId}
             imageUrls={recipe.imageUrls}
             unsplashImageUrl={recipe.unsplashImageUrl}
-            tags={recipe.tags}
+            category={recipe.category}
             created={recipe.created}
             photos={recipe.photos}
           />
+
+          <Suspense fallback={null}>
+            <SimilarRecipes category={recipe.category} excludeId={recipe.id} />
+          </Suspense>
         </div>
       </div>
     </>
   );
 }
+
 export default Recipe;
