@@ -22,10 +22,13 @@ const josefinSans = Josefin_Sans({
 
 // Convert title to URL format and display each hit
 const Hit: React.FC<{ hit: any }> = ({ hit }) => {
-  const imageUrl =
-    hit.unsplashImageUrl ||
-    hit.imageUrls?.[0] ||
-    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c";
+  // Prefer first photo from photos array, then Unsplash image, then stock photo
+  let imageUrl =
+    Array.isArray(hit.photos) && hit.photos.length > 0 && hit.photos[0]?.url
+      ? hit.photos[0].url
+      : hit.unsplashImageUrl
+      ? hit.unsplashImageUrl
+      : "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c";
 
   const searchUrl = recipeToUrl(hit.title);
 

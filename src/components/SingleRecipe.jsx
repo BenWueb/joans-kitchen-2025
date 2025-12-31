@@ -113,7 +113,6 @@ function SingleRecipe({
   const [recipeImage, setRecipeImage] = useState(
     (photos && photos.length > 0 ? photos[0].url : null) ||
       unsplashImageUrl ||
-      imageUrls?.[0] ||
       "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a"
   );
 
@@ -158,16 +157,48 @@ function SingleRecipe({
   }, [photos]);
 
   // Fetch or get cached image from Unsplash
+  const [localUnsplashImageUrl, setLocalUnsplashImageUrl] = useState(
+    unsplashImageUrl || null
+  );
   useEffect(() => {
     const loadImage = async () => {
+      let normalizedPhotos = Array.isArray(photos)
+        ? photos.filter((p) => p && p.url)
+        : [];
+      // Fetch image and also update Unsplash info if available
       const url = await getOrFetchRecipeImage(recipeId, {
         id: recipeId,
         title,
         tags,
-        photos,
+        photos: normalizedPhotos.map((p) => p.url),
         unsplashImageUrl,
       });
-      setRecipeImage(url);
+      setRecipeImage(
+        url ||
+          (normalizedPhotos.length > 0
+            ? normalizedPhotos[0].url
+            : unsplashImageUrl ||
+              "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a")
+      );
+
+      // If Unsplash image is used, update localUnsplashImageUrl and fetch Unsplash info
+      if (!normalizedPhotos.length && (url || unsplashImageUrl)) {
+        setLocalUnsplashImageUrl(url || unsplashImageUrl);
+        try {
+          const { doc, getDoc } = await import("firebase/firestore");
+          const { db } = await import("@/firestore.config");
+          const recipeDoc = await getDoc(doc(db, "recipes", recipeId));
+          if (recipeDoc.exists()) {
+            const data = recipeDoc.data();
+            setUnsplashPhotographer(data.unsplashPhotographer || null);
+            setUnsplashPhotographerUrl(data.unsplashPhotographerUrl || null);
+          }
+        } catch (err) {
+          // Ignore error, just don't update info
+        }
+      } else {
+        setLocalUnsplashImageUrl(null);
+      }
     };
     loadImage();
   }, [recipeId, title, tags, photos, unsplashImageUrl]);
@@ -843,7 +874,7 @@ function SingleRecipe({
       </div>
 
       {/* Unsplash Image Info Section - Admin Only */}
-      {isAdmin && unsplashImageUrl && (
+      {isAdmin && (unsplashImageUrl || localUnsplashImageUrl) && (
         <div className="bg-linear-to-br from-purple-100 via-indigo-50 to-purple-100 rounded-lg shadow-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h5 className="text-lg font-bold text-gray-700">
