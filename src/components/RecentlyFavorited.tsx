@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { recipeToUrl } from "@/utils/recipeUrl";
-import { getRecentlyFavoritedRecipes, FavoritedRecipe } from "@/lib/firebase-server";
+import {
+  getRecentlyFavoritedRecipes,
+  FavoritedRecipe,
+} from "@/lib/firebase-server";
 import { RecipeCardSkeleton } from "@/components/ui/Loading";
 
 async function RecentlyFavoritedData() {
@@ -34,7 +37,7 @@ async function RecentlyFavoritedData() {
                 />
 
                 {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/70 to-black/30" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/95 via-black/70 to-black/30" />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col items-center justify-center text-white z-10 px-2">

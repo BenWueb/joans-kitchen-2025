@@ -2,6 +2,9 @@ import { adminDb } from "./firebase-admin";
 import { COLLECTIONS, DEFAULT_RECIPE_IMAGE } from "./constants";
 import type { Recipe, FavoritedRecipe } from "./types";
 
+// Re-export shared types for convenience in server-component imports
+export type { Recipe, FavoritedRecipe } from "./types";
+
 /**
  * Get a single recipe by ID (server-side)
  */
