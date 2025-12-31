@@ -62,7 +62,7 @@ export default function RecipeHeader({
   onSaveField,
 }: RecipeHeaderProps) {
   return (
-    <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-25 flex items-center group">
+    <div className="relative rounded-lg shadow-lg overflow-hidden mb-6 min-h-25 flex items-center group mt-12">
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center"
@@ -136,7 +136,8 @@ export default function RecipeHeader({
 
           {createdBy && (
             <p className="text-base text-white/90 mb-3">
-              by <span className="font-semibold text-teal-300">{createdBy}</span>
+              by{" "}
+              <span className="font-semibold text-teal-300">{createdBy}</span>
             </p>
           )}
 
@@ -231,4 +232,3 @@ export default function RecipeHeader({
     </div>
   );
 }
-

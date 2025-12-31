@@ -279,7 +279,7 @@ function Profile() {
       <Navbar />
       <div className="min-h-screen px-4 pt-20 pb-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-white text-center mb-8">
+          <h1 className="mt-12 text-3xl font-bold text-white text-center mb-8">
             {name}&apos;s Profile
           </h1>
 
@@ -303,18 +303,20 @@ function Profile() {
                     <button
                       onClick={handleSave}
                       disabled={saving}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 sm:px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors disabled:opacity-50"
                     >
                       <MdSave className="w-5 h-5" />
-                      {saving ? "Saving..." : "Save"}
+                      <span className="hidden sm:inline">
+                        {saving ? "Saving..." : "Save"}
+                      </span>
                     </button>
                     <button
                       onClick={handleCancel}
                       disabled={saving}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors disabled:opacity-50"
+                      className="flex items-center gap-2 px-4 sm:px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors disabled:opacity-50"
                     >
                       <MdCancel className="w-5 h-5" />
-                      Cancel
+                      <span className="hidden sm:inline">Cancel</span>
                     </button>
                   </div>
                 )}

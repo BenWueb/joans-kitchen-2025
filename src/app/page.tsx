@@ -17,7 +17,7 @@ function Main() {
       <section className="min-h-screen">
         <div className="w-full min-h-screen flex flex-col items-center px-4 py-6 md:p-4 mt-12">
           <h1
-            className={`text-4xl sm:text-5xl md:text-6xl lg:text-8xl mt-4 sm:mt-8 md:mt-[5%] mb-6 md:mb-10 text-white ${josefinSans.className} font-bold text-center uppercase tracking-wider`}
+            className={`mt-12 text-4xl sm:text-5xl md:text-6xl lg:text-8xl  sm:mt-8 md:mt-[5%] mb-6 md:mb-10 text-white ${josefinSans.className} font-bold text-center uppercase tracking-wider`}
           >
             Joans Kitchen
           </h1>
