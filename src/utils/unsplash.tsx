@@ -6,6 +6,7 @@ interface Recipe {
   title: string;
   tags?: string[];
   photos?: string[];
+  imageUrls?: string[];
   unsplashImageUrl?: string;
 }
 
