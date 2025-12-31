@@ -72,7 +72,7 @@ export const getOrFetchRecipeImage = async (
     }
 
     // 3. Fetch from Unsplash
-    const query = `${recipe.title} food`;
+    const query = `${recipe.title}`;
     const imageData = await fetchUnsplashImage(query);
 
     if (imageData) {
