@@ -169,7 +169,6 @@ function SingleRecipe({
     handleDeleteUnsplashCache,
   } = useAdminEditing({
     recipeId,
-    currentUserId,
     title: localTitle,
     ingredients: localIngredients,
     recipe: localRecipe,

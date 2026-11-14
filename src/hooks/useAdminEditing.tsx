@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { doc, updateDoc, deleteField } from "firebase/firestore";
-import { db } from "@/firestore.config";
-import { COLLECTIONS } from "@/lib/constants";
+import { api } from "@/lib/api";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 interface UseAdminEditingProps {
   recipeId: string;
-  currentUserId: string | null;
   title: string;
   ingredients: string;
   recipe: string;
@@ -17,14 +15,14 @@ interface UseAdminEditingProps {
 
 export function useAdminEditing({
   recipeId,
-  currentUserId,
   title,
   ingredients,
   recipe,
   category,
 }: UseAdminEditingProps) {
   const router = useRouter();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { userData } = useCurrentUser();
+  const isAdmin = userData?.isAdmin === true;
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [isEditingIngredients, setIsEditingIngredients] = useState(false);
   const [isEditingSteps, setIsEditingSteps] = useState(false);
@@ -35,22 +33,6 @@ export function useAdminEditing({
   const [editedTags, setEditedTags] = useState(category || "");
   const [savingField, setSavingField] = useState(false);
   const [error, setError] = useState("");
-
-  // Check if current user is admin
-  useEffect(() => {
-    const checkAdmin = async () => {
-      if (currentUserId) {
-        try {
-          const { checkIsAdmin } = await import("@/lib/firebase-client");
-          const isAdminUser = await checkIsAdmin(currentUserId);
-          setIsAdmin(isAdminUser);
-        } catch (err) {
-          console.error("Error checking admin status:", err);
-        }
-      }
-    };
-    checkAdmin();
-  }, [currentUserId]);
 
   // Reset edited values when props change
   useEffect(() => {
@@ -64,20 +46,14 @@ export function useAdminEditing({
     setSavingField(true);
     setError("");
     try {
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
-      const updateData: any = {};
-
-      if (field === "title") {
-        updateData.title = value;
-      } else if (field === "ingredients") {
-        updateData.ingredients = value;
-      } else if (field === "recipe") {
-        updateData.recipe = value;
-      } else if (field === "category") {
-        updateData.category = value.trim();
+      if (!["title", "ingredients", "recipe", "category"].includes(field)) {
+        throw new Error(`Unknown field: ${field}`);
       }
 
-      await updateDoc(recipeRef, updateData);
+      await api(`/api/recipes/${recipeId}`, {
+        method: "PATCH",
+        json: { [field]: value },
+      });
 
       // Reset editing state
       if (field === "title") setIsEditingTitle(false);
@@ -103,11 +79,9 @@ export function useAdminEditing({
     setSavingField(true);
     setError("");
     try {
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
-      await updateDoc(recipeRef, {
-        unsplashImageUrl: deleteField(),
-        unsplashPhotographer: deleteField(),
-        unsplashPhotographerUrl: deleteField(),
+      await api(`/api/recipes/${recipeId}`, {
+        method: "PATCH",
+        json: { clearUnsplash: true },
       });
 
       // Re-sync any server-rendered recipe data

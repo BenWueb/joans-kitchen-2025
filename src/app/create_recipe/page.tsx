@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getAuth } from "firebase/auth";
+import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useCreateRecipe } from "@/hooks/useCreateRecipe";
@@ -28,24 +28,16 @@ function CreateRecipe() {
   } = useCreateRecipe();
   const router = useRouter();
   const [localPhotos, setLocalPhotos] = useState<any[]>([]);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? null;
   const createdRecipeIdRef = useRef<string | null>(null);
 
-  // Check if user is logged in
+  // Redirect to login if not signed in
   useEffect(() => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
-      // Store return URL and redirect to login
-      if (typeof window !== "undefined") {
-        localStorage.setItem("returnUrl", "/create_recipe");
-      }
-      router.push("/login");
-    } else {
-      setCurrentUserId(user.uid);
-    }
-  }, [router]);
+    if (sessionPending || session?.user) return;
+    localStorage.setItem("returnUrl", "/create_recipe");
+    router.push("/login");
+  }, [router, session, sessionPending]);
 
   // Photo hooks (same interface as SingleRecipe)
   const {

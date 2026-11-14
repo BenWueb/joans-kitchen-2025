@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/firestore.config";
-import { COLLECTIONS, DEFAULT_USER_NAME } from "@/lib/constants";
+import { api } from "@/lib/api";
+import { DEFAULT_USER_NAME } from "@/lib/constants";
 import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
 
@@ -73,36 +71,10 @@ export function useRecipeNotes({
     setError("");
 
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-
-      if (!user) {
-        setError("You must be logged in to save notes");
-        setSaving(false);
-        return;
-      }
-
-      // Get user's name from Firestore
-      const userDocRef = doc(db, COLLECTIONS.USERS, user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const userName = userDoc.exists() ? userDoc.data().name : DEFAULT_USER_NAME;
-
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
-      const timestamp = new Date().toISOString();
-
-      const noteObject: Note = {
-        text: newNote,
-        addedBy: userName,
-        addedByUserId: user.uid,
-        addedAt: timestamp,
-      };
-
-      // Add the new note to the beginning of the array
-      const updatedNotes = [noteObject, ...localNotes];
-
-      await updateDoc(recipeRef, {
-        notes: updatedNotes,
-      });
+      const { notes: updatedNotes } = await api<{ notes: Note[] }>(
+        `/api/recipes/${recipeId}/notes`,
+        { method: "POST", json: { text: newNote } }
+      );
 
       // Update local state immediately
       setLocalNotes(updatedNotes);
@@ -128,17 +100,10 @@ export function useRecipeNotes({
     setError("");
 
     try {
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
-      const updatedNotes = [...localNotes];
-      updatedNotes[index] = {
-        ...updatedNotes[index],
-        text: editedNoteText,
-        editedAt: new Date().toISOString(),
-      };
-
-      await updateDoc(recipeRef, {
-        notes: updatedNotes,
-      });
+      const { notes: updatedNotes } = await api<{ notes: Note[] }>(
+        `/api/recipes/${recipeId}/notes`,
+        { method: "PATCH", json: { index, text: editedNoteText } }
+      );
 
       // Update local state immediately
       setLocalNotes(updatedNotes);
@@ -163,12 +128,10 @@ export function useRecipeNotes({
     setError("");
 
     try {
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, recipeId);
-      const updatedNotes = localNotes.filter((_, i) => i !== index);
-
-      await updateDoc(recipeRef, {
-        notes: updatedNotes,
-      });
+      const { notes: updatedNotes } = await api<{ notes: Note[] }>(
+        `/api/recipes/${recipeId}/notes`,
+        { method: "DELETE", json: { index } }
+      );
 
       // Update local state immediately
       setLocalNotes(updatedNotes);

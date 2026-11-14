@@ -9,60 +9,26 @@ export interface AppError {
 }
 
 /**
- * Map Firebase auth error codes to user-friendly messages
+ * Map Better Auth error codes to user-friendly messages
  */
-export function getAuthErrorMessage(errorCode: string): string {
+export function getAuthErrorMessage(errorCode?: string): string {
   const errorMessages: Record<string, string> = {
-    "auth/invalid-credential": "Invalid email or password. Please try again.",
-    "auth/user-not-found": "Invalid email or password. Please try again.",
-    "auth/wrong-password": "Invalid email or password. Please try again.",
-    "auth/invalid-email": "Invalid email address. Please enter a valid email.",
-    "auth/user-disabled": "This account has been disabled. Please contact support.",
-    "auth/too-many-requests":
-      "Too many failed login attempts. Please try again later.",
-    "auth/network-request-failed":
-      "Network error. Please check your connection and try again.",
-    "auth/requires-recent-login":
-      "Please log out and log back in to update your email",
-    "auth/email-already-in-use": "This email is already in use",
+    INVALID_EMAIL_OR_PASSWORD: "Invalid email or password. Please try again.",
+    INVALID_PASSWORD: "Invalid email or password. Please try again.",
+    INVALID_EMAIL: "Invalid email address. Please enter a valid email.",
+    EMAIL_NOT_VERIFIED: "Please verify your email address before signing in.",
+    TOO_MANY_REQUESTS: "Too many attempts. Please try again later.",
+    PASSWORD_TOO_SHORT: "Password must be at least 8 characters.",
+    PASSWORD_TOO_LONG: "That password is too long.",
+    USER_ALREADY_EXISTS: "This email is already in use",
+    USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "This email is already in use",
+    SESSION_EXPIRED: "Please log out and log back in to update your email",
+    FAILED_TO_CREATE_USER: "Unable to create account. Please try again.",
+    INVALID_TOKEN: "This link is invalid or has expired.",
   };
 
   return (
-    errorMessages[errorCode] ||
-    "An error occurred. Please try again."
-  );
-}
-
-/**
- * Map Firebase storage error codes to user-friendly messages
- */
-export function getStorageErrorMessage(errorCode: string): string {
-  const errorMessages: Record<string, string> = {
-    "storage/object-not-found": "File not found",
-    "storage/unauthorized": "You don't have permission to access this file",
-    "storage/canceled": "Upload was canceled",
-    "storage/unknown": "An unknown error occurred",
-  };
-
-  return (
-    errorMessages[errorCode] ||
-    "An error occurred with file storage. Please try again."
-  );
-}
-
-/**
- * Map Firebase Firestore error codes to user-friendly messages
- */
-export function getFirestoreErrorMessage(errorCode: string): string {
-  const errorMessages: Record<string, string> = {
-    "permission-denied": "You don't have permission to perform this action",
-    "not-found": "The requested item was not found",
-    "already-exists": "This item already exists",
-    "unavailable": "Service temporarily unavailable. Please try again.",
-  };
-
-  return (
-    errorMessages[errorCode] ||
+    (errorCode && errorMessages[errorCode]) ||
     "An error occurred. Please try again."
   );
 }
@@ -73,22 +39,19 @@ export function getFirestoreErrorMessage(errorCode: string): string {
 export function getUserFriendlyErrorMessage(error: any): string {
   if (!error) return "An unexpected error occurred";
 
-  // Firebase Auth errors
-  if (error.code?.startsWith("auth/")) {
-    return getAuthErrorMessage(error.code);
+  if (error.status === 429) {
+    return getAuthErrorMessage("TOO_MANY_REQUESTS");
   }
 
-  // Firebase Storage errors
-  if (error.code?.startsWith("storage/")) {
-    return getStorageErrorMessage(error.code);
+  if (typeof error.code === "string") {
+    const mapped = getAuthErrorMessage(error.code);
+    if (mapped !== getAuthErrorMessage()) return mapped;
   }
 
-  // Firebase Firestore errors
-  if (error.code) {
-    return getFirestoreErrorMessage(error.code);
+  if (error instanceof TypeError) {
+    return "Network error. Please check your connection and try again.";
   }
 
-  // Generic error messages
   if (error.message) {
     return error.message;
   }
@@ -102,4 +65,3 @@ export function getUserFriendlyErrorMessage(error: any): string {
 export function logError(context: string, error: any): void {
   console.error(`[${context}]`, error);
 }
-

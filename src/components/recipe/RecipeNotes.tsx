@@ -1,7 +1,6 @@
 "use client";
 
 import { MdAdd, MdEdit, MdDelete } from "react-icons/md";
-import { getAuth } from "firebase/auth";
 
 interface Note {
   text: string;
@@ -54,7 +53,7 @@ export default function RecipeNotes({
     <div className="bg-linear-to-br from-teal-100 via-cyan-50 to-teal-100 rounded-lg shadow-lg p-6 mb-6">
       <div className="flex justify-between items-center mb-4">
         <h5 className="text-lg font-bold text-gray-700">Notes</h5>
-        {!isEditingNotes && getAuth().currentUser && (
+        {!isEditingNotes && currentUserId && (
           <button
             onClick={onStartAddNote}
             className="flex items-center gap-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white text-sm rounded-md transition-colors"

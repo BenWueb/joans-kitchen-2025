@@ -2,17 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  updateDoc,
-  arrayUnion,
-} from "firebase/firestore";
-import { db } from "@/firestore.config";
+import { api } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { recipeToUrl } from "@/utils/recipeUrl";
 
 interface RecipeFormData {
@@ -100,10 +91,9 @@ export const useCreateRecipe = () => {
 
   const createRecipeDoc = async (): Promise<{ id: string; formattedTitle: string }> => {
     setError("");
-    const auth = getAuth();
-    const user = auth.currentUser;
+    const { data: session } = await authClient.getSession();
 
-    if (!user) {
+    if (!session?.user) {
       setError("You must be logged in to create a recipe.");
       if (typeof window !== "undefined") {
         localStorage.setItem("returnUrl", "/create_recipe");
@@ -124,11 +114,6 @@ export const useCreateRecipe = () => {
       setError("Please enter recipe instructions.");
       throw new Error("Missing recipe");
     }
-
-    // Get user info
-    const userDocRef = doc(db, "Users", user.uid);
-    const userDoc = await getDoc(userDocRef);
-    const userName = userDoc.exists() ? userDoc.data().name : "Unknown";
 
     // Format title with proper capitalization (Title Case each word)
     const formattedTitle = formData.title
@@ -157,49 +142,30 @@ export const useCreateRecipe = () => {
       })
       .join("\n");
 
-    const notesArray = formData.notes.trim()
-      ? [
-          {
-            text: formData.notes.trim(),
-            addedBy: userName,
-            addedByEmail: user.email || "Unknown",
-            addedByUserId: user.uid,
-            addedAt: new Date().toISOString(),
-          },
-        ]
-      : [];
-
-    // Create recipe document (without photos)
-    const docRef = await addDoc(collection(db, "recipes"), {
-      title: formattedTitle,
-      ingredients: formattedIngredients,
-      recipe: formattedRecipe,
-      category: "",
-      createdBy: user.email || "Unknown",
-      createdByUserId: user.uid,
-      created: serverTimestamp(),
-      notes: notesArray,
-      photos: [],
-    });
-    setRecipeId(docRef.id);
-
-    // Add recipe ID to user's recipes array (best effort)
+    let created: { id: string; title: string };
     try {
-      await updateDoc(userDocRef, { recipes: arrayUnion(docRef.id) });
-    } catch (e) {
-      console.error("Error updating user recipes:", e);
+      created = await api<{ id: string; title: string }>("/api/recipes", {
+        method: "POST",
+        json: {
+          title: formattedTitle,
+          ingredients: formattedIngredients,
+          recipe: formattedRecipe,
+          notes: formData.notes.trim(),
+        },
+      });
+    } catch (err: any) {
+      setError(err?.message || "Failed to create recipe. Please try again.");
+      throw err;
     }
+    setRecipeId(created.id);
 
-    return { id: docRef.id, formattedTitle };
+    return { id: created.id, formattedTitle };
   };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-
-    const auth = getAuth();
-    const user = auth.currentUser;
 
     setSubmitting(true);
 
@@ -216,7 +182,6 @@ export const useCreateRecipe = () => {
       }, 1500);
     } catch (error: any) {
       console.error("Error creating recipe:", error);
-      setError("Failed to create recipe. Please try again.");
       setSubmitting(false);
     }
   };

@@ -13,37 +13,37 @@ const categories: Category[] = [
     name: "Appetizers",
     urlValue: "Appetizers Hors D'Oeuvres",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/tim-toomey-STqHLqMne3k-unsplash_1600x1600.webp?alt=media&token=bfc9a035-471e-4d9e-9040-d992195d5170",
+      "/images/static/tim-toomey-STqHLqMne3k-unsplash_1600x1600.webp",
   },
   {
     name: "Chicken",
     urlValue: "Chicken",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/claudio-schwarz-4qJlXK4mYzU-unsplash_1600x1600.webp?alt=media&token=3b4325a8-a1a9-4f2f-9ab6-15985710cbe2",
+      "/images/static/claudio-schwarz-4qJlXK4mYzU-unsplash_1600x1600.webp",
   },
   {
     name: "Beef",
     urlValue: "Beef",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/madie-hamilton-GXehL5_crJ4-unsplash_1600x1600.webp?alt=media&token=c5fadb97-208d-45e2-8747-96eb5f05ae3a",
+      "/images/static/madie-hamilton-GXehL5_crJ4-unsplash_1600x1600.webp",
   },
   {
     name: "Cookies",
     urlValue: "Cookies",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/julissa-capdevilla-tDoHiqXl9b8-unsplash_1600x1600.webp?alt=media&token=f412111d-a43d-4ce3-85ab-ae64fae9f215",
+      "/images/static/julissa-capdevilla-tDoHiqXl9b8-unsplash_1600x1600.webp",
   },
   {
     name: "Asian",
     urlValue: "Chinese",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/michele-blackwell-rAyCBQTH7ws-unsplash_1600x1600.webp?alt=media&token=6da0fb59-2617-4bba-b561-d67f5bb8afe0",
+      "/images/static/michele-blackwell-rAyCBQTH7ws-unsplash_1600x1600.webp",
   },
   {
     name: "Drinks",
     urlValue: "Beverages Alcoholic",
     image:
-      "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/kobby-mendez-xBFTjrMIC0c-unsplash_1600x1600.webp?alt=media&token=a77b9740-728f-426b-8ffe-c02fe8312bbd",
+      "/images/static/kobby-mendez-xBFTjrMIC0c-unsplash_1600x1600.webp",
   },
 ];
 

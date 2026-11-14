@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { unstable_cache } from "next/cache";
-import { getRecipesByIds } from "@/lib/firebase-server";
+import { getRecipesByIds } from "@/lib/recipes";
 import { RecipeCarouselSkeleton } from "@/components/ui/Loading";
 import RecipeCarouselUI from "./RecipeCarouselUI";
 
@@ -9,7 +9,7 @@ interface RecipeCarouselProps {
 }
 
 // Cache homepage carousel results (scoped to this component only).
-// This avoids repeated Firestore Admin reads across requests while allowing periodic refresh.
+// This avoids repeated database reads across requests while allowing periodic refresh.
 const getCarouselRecipesCached = unstable_cache(
   async (recipeIds: string[]) => getRecipesByIds(recipeIds),
   ["home-recipe-carousel"],

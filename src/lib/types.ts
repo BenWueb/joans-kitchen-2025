@@ -11,7 +11,7 @@ export interface Recipe {
   notes?: any;
   category?: string;
   imageUrls?: string[];
-  photos?: { url: string; uploadedAt: any; uploadedBy: string }[];
+  photos?: Photo[];
   unsplashImageUrl?: string;
   unsplashPhotographer?: string;
   unsplashPhotographerUrl?: string;
@@ -22,13 +22,19 @@ export interface Recipe {
 }
 
 export interface UserData {
-  id?: string;
+  id: string;
   name: string;
   email: string;
-  favorites: string[];
-  recipes: string[];
-  about?: string;
-  isAdmin?: boolean;
+  emailVerified: boolean;
+  about?: string | null;
+  isAdmin: boolean;
+}
+
+export interface RecipeSummary {
+  id: string;
+  title: string;
+  createdBy: string;
+  photos?: Photo[];
 }
 
 export interface Note {

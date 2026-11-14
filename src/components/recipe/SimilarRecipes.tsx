@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getRecipesByCategory } from "@/lib/firebase-server";
+import { getRecipesByCategory } from "@/lib/recipes";
 import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants";
 import { recipeToUrl } from "@/utils/recipeUrl";
 

@@ -17,7 +17,7 @@ function RecipeCard({ title, createdBy }) {
         <div className="relative w-full h-full">
           {/* Image */}
           <img
-            src="https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+            src="/images/static/anh-nguyen-kcA-c3f_3FE-unsplash.jpg"
             alt={title}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

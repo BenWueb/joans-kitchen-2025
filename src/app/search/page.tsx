@@ -28,7 +28,7 @@ const Hit: React.FC<{ hit: any }> = ({ hit }) => {
       ? hit.photos[0].url
       : hit.unsplashImageUrl
       ? hit.unsplashImageUrl
-      : "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c";
+      : "/images/static/anh-nguyen-kcA-c3f_3FE-unsplash.jpg";
 
   const searchUrl = recipeToUrl(hit.title);
 

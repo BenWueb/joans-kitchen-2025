@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "**",
+      },
+      {
+        // Photos not yet re-hosted by the Firebase migration script
+        protocol: "https",
         hostname: "firebasestorage.googleapis.com",
         pathname: "**",
       },
