@@ -1,13 +1,17 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
-  jsonb,
+  integer,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
-import type { Note, Photo } from "@/lib/types";
+
+const tz = (name: string) => timestamp(name, { withTimezone: true });
 
 // ---------------------------------------------------------------------------
 // Better Auth tables (names/columns follow Better Auth's core schema, plus the
@@ -20,8 +24,8 @@ export const user = pgTable("user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at")
+  createdAt: tz("created_at").notNull().defaultNow(),
+  updatedAt: tz("updated_at")
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
@@ -33,10 +37,10 @@ export const session = pgTable(
   "session",
   {
     id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
+    expiresAt: tz("expires_at").notNull(),
     token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: tz("created_at").notNull().defaultNow(),
+    updatedAt: tz("updated_at")
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -61,12 +65,12 @@ export const account = pgTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: tz("access_token_expires_at"),
+    refreshTokenExpiresAt: tz("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    createdAt: tz("created_at").notNull().defaultNow(),
+    updatedAt: tz("updated_at")
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -80,9 +84,9 @@ export const verification = pgTable(
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
+    expiresAt: tz("expires_at").notNull(),
+    createdAt: tz("created_at").notNull().defaultNow(),
+    updatedAt: tz("updated_at")
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
@@ -100,24 +104,65 @@ export const recipes = pgTable(
     id: text("id").primaryKey(),
     title: text("title").notNull(),
     ingredients: text("ingredients").notNull().default(""),
-    recipe: text("recipe").notNull().default(""),
+    instructions: text("instructions").notNull().default(""),
     category: text("category").notNull().default(""),
-    createdBy: text("created_by").notNull().default("Unknown"),
+    // The author's live name comes from the joined user; this snapshot is used
+    // when there is no linked account (recipes imported without an owner).
+    authorName: text("author_name").notNull().default("Unknown"),
     createdByUserId: text("created_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
-    created: timestamp("created").notNull().defaultNow(),
-    notes: jsonb("notes").$type<Note[]>().notNull().default([]),
-    photos: jsonb("photos").$type<Photo[]>().notNull().default([]),
-    imageUrls: jsonb("image_urls").$type<string[]>().notNull().default([]),
     unsplashImageUrl: text("unsplash_image_url"),
     unsplashPhotographer: text("unsplash_photographer"),
     unsplashPhotographerUrl: text("unsplash_photographer_url"),
+    createdAt: tz("created_at").notNull().defaultNow(),
+    updatedAt: tz("updated_at")
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
-    index("recipes_title_idx").on(t.title),
+    // Recipe URLs are derived from the title, so titles must be unique
+    uniqueIndex("recipes_title_lower_uniq").on(sql`lower(${t.title})`),
     index("recipes_category_idx").on(t.category),
     index("recipes_created_by_user_id_idx").on(t.createdByUserId),
+    check("recipes_title_not_blank", sql`length(btrim(${t.title})) > 0`),
+  ]
+);
+
+export const recipeNotes = pgTable(
+  "recipe_notes",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    authorName: text("author_name").notNull(),
+    text: text("text").notNull(),
+    createdAt: tz("created_at").notNull().defaultNow(),
+    editedAt: tz("edited_at"),
+  },
+  (t) => [index("recipe_notes_recipe_idx").on(t.recipeId, t.createdAt)]
+);
+
+export const recipePhotos = pgTable(
+  "recipe_photos",
+  {
+    id: text("id").primaryKey(),
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    uploaderName: text("uploader_name").notNull(),
+    // 0 is the cover photo
+    position: integer("position").notNull().default(0),
+    createdAt: tz("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("recipe_photos_recipe_position_idx").on(t.recipeId, t.position),
+    uniqueIndex("recipe_photos_recipe_url_uniq").on(t.recipeId, t.url),
   ]
 );
 
@@ -130,10 +175,11 @@ export const favorites = pgTable(
     recipeId: text("recipe_id")
       .notNull()
       .references(() => recipes.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: tz("created_at").notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.recipeId] }),
-    index("favorites_created_at_idx").on(t.createdAt),
+    index("favorites_recipe_idx").on(t.recipeId),
+    index("favorites_user_created_idx").on(t.userId, t.createdAt),
   ]
 );

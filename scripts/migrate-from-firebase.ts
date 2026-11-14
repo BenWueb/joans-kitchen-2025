@@ -155,6 +155,13 @@ async function main() {
   const recipeSnap = await firestore.collection("recipes").get();
   const importedRecipes = new Set<string>();
 
+  // Recipe URLs come from the title, so titles are unique (case-insensitive)
+  const usedTitles = new Set(
+    (await db.select({ title: schema.recipes.title }).from(schema.recipes)).map(
+      (r) => r.title.toLowerCase()
+    )
+  );
+
   for (const doc of recipeSnap.docs) {
     const data = doc.data();
     const id = doc.id;
@@ -170,25 +177,67 @@ async function main() {
       continue;
     }
 
-    const created = toDate(data.created) ?? new Date();
+    const createdAt = toDate(data.created) ?? new Date();
+    const ownerId = data.createdByUserId ?? ownerByRecipe.get(id) ?? null;
+    const userId = ownerId && importedUsers.has(ownerId) ? ownerId : null;
+
+    let title: string = (data.title ?? "Untitled Recipe").trim() || "Untitled Recipe";
+    if (usedTitles.has(title.toLowerCase())) {
+      let n = 2;
+      while (usedTitles.has(`${title} (${n})`.toLowerCase())) n++;
+      console.warn(`! Duplicate title "${title}" (${id}) renamed to "${title} (${n})"`);
+      title = `${title} (${n})`;
+    }
+    usedTitles.add(title.toLowerCase());
 
     // Legacy docs stored notes as a single string
-    const notes = Array.isArray(data.notes)
+    const rawNotes: any[] = Array.isArray(data.notes)
       ? data.notes
       : data.notes
         ? [
             {
               text: String(data.notes),
               addedBy: data.notesUpdatedBy || "Joan",
-              addedAt: data.notesUpdatedAt || created.toISOString(),
+              addedAt: data.notesUpdatedAt,
             },
           ]
         : [];
+    const notes = rawNotes
+      .filter((n) => n?.text)
+      .map((n) => ({
+        id: randomUUID(),
+        recipeId: id,
+        userId: n.addedByUserId && importedUsers.has(n.addedByUserId) ? n.addedByUserId : null,
+        authorName: n.addedBy || "Joan",
+        text: String(n.text),
+        createdAt: toDate(n.addedAt) ?? createdAt,
+        editedAt: toDate(n.editedAt),
+      }));
 
-    const photos = [];
-    for (const p of data.photos ?? []) {
-      if (!p?.url) continue;
-      let url: string = p.url;
+    // Uploaded photos first, then legacy imageUrls (now regular photos)
+    const sources: { url: string; by: string; userId?: string; at: Date }[] = [
+      ...(data.photos ?? [])
+        .filter((p: any) => p?.url)
+        .map((p: any) => ({
+          url: p.url,
+          by: p.addedBy ?? p.uploadedBy ?? "Joan",
+          userId: p.addedByUserId,
+          at: toDate(p.addedAt ?? p.uploadedAt) ?? createdAt,
+        })),
+      ...(data.imageUrls ?? []).map((url: string) => ({
+        url,
+        by: "Joan",
+        userId: undefined,
+        at: createdAt,
+      })),
+    ];
+
+    const photos: (typeof schema.recipePhotos.$inferInsert)[] = [];
+    const seenUrls = new Set<string>();
+    for (const src of sources) {
+      if (seenUrls.has(src.url)) continue;
+      seenUrls.add(src.url);
+      let url = src.url;
 
       if (!DRY_RUN && !SKIP_PHOTOS) {
         try {
@@ -198,44 +247,45 @@ async function main() {
           url = await storeImage(id, processed);
           stats.photos++;
         } catch (err) {
-          console.warn(`! Could not re-host photo for ${id} (${p.url}): ${err}`);
+          console.warn(`! Could not re-host photo for ${id} (${src.url}): ${err}`);
         }
       }
 
       photos.push({
+        id: randomUUID(),
+        recipeId: id,
         url,
-        addedBy: p.addedBy ?? p.uploadedBy ?? "Joan",
-        addedByUserId: p.addedByUserId,
-        addedAt:
-          p.addedAt ?? toDate(p.uploadedAt)?.toISOString() ?? created.toISOString(),
+        userId: src.userId && importedUsers.has(src.userId) ? src.userId : null,
+        uploaderName: src.by,
+        position: photos.length,
+        createdAt: src.at,
       });
     }
-
-    const ownerId = data.createdByUserId ?? ownerByRecipe.get(id) ?? null;
 
     if (DRY_RUN) {
       stats.recipes++;
       continue;
     }
 
-    await db.insert(schema.recipes).values({
-      id,
-      title: data.title ?? "Untitled Recipe",
-      ingredients: data.ingredients ?? "",
-      recipe: data.recipe ?? "",
-      category: data.category ?? "",
-      createdBy: data.createdBy ?? "Unknown",
-      createdByUserId: ownerId && importedUsers.has(ownerId) ? ownerId : null,
-      created,
-      notes,
-      photos,
-      imageUrls: data.imageUrls ?? [],
-      unsplashImageUrl: data.unsplashImageUrl ?? null,
-      unsplashPhotographer: data.unsplashPhotographer ?? null,
-      unsplashPhotographerUrl: data.unsplashPhotographerUrl ?? null,
+    await db.transaction(async (tx) => {
+      await tx.insert(schema.recipes).values({
+        id,
+        title,
+        ingredients: data.ingredients ?? "",
+        instructions: data.recipe ?? "",
+        category: data.category ?? "",
+        authorName: data.createdBy ?? "Unknown",
+        createdByUserId: userId,
+        createdAt,
+        unsplashImageUrl: data.unsplashImageUrl ?? null,
+        unsplashPhotographer: data.unsplashPhotographer ?? null,
+        unsplashPhotographerUrl: data.unsplashPhotographerUrl ?? null,
+      });
+      if (notes.length > 0) await tx.insert(schema.recipeNotes).values(notes);
+      if (photos.length > 0) await tx.insert(schema.recipePhotos).values(photos);
     });
     stats.recipes++;
-    console.log(`  recipe ${id}: ${data.title}`);
+    console.log(`  recipe ${id}: ${title}`);
   }
 
   // ---- Favorites -----------------------------------------------------------

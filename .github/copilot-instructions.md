@@ -15,9 +15,9 @@ Next.js 16 recipe management app with a Postgres (Drizzle) backend, Better Auth,
 
 ### Backend Integration
 
-- **Database**: Postgres via Drizzle. Schema in `src/db/schema.ts` (`user`/`session`/`account`/`verification` for Better Auth, plus `recipes` and `favorites`). Migrations are generated into `drizzle/` with `npm run db:generate` and applied with `npm run db:migrate`.
+- **Database**: Postgres via Drizzle. Schema in `src/db/schema.ts` (`user`/`session`/`account`/`verification` for Better Auth, plus `recipes`, `recipe_notes`, `recipe_photos` and `favorites`; all timestamps are timestamptz). Migrations are generated into `drizzle/` with `npm run db:generate` and applied with `npm run db:migrate`.
 - **Server reads** (server components): `src/lib/recipes.ts`. **Mutations** go through route handlers in `src/app/api/**`, which check the session via `getCurrentUser()` (`src/lib/session.ts`) and enforce permissions (admin-only field edits, owner/admin delete, note/photo authorship).
-- **Recipe shape** (`src/lib/types.ts`): `notes` and `photos` are jsonb arrays on the `recipes` row; `created` is exposed as `{seconds, nanoseconds}` for the UI. Favorites are rows in `favorites` (not an array on the user).
+- **Recipe shape** (`src/lib/types.ts`): `src/lib/recipes.ts` assembles a `Recipe` from the `recipes` row plus its `recipe_notes` (newest first) and `recipe_photos` (by `position`, 0 = cover). Notes and photos have stable ids, and the API addresses them by id. The `instructions` column is exposed as `recipe`, `created` as `{seconds, nanoseconds}`, and `createdBy` is the author's current account name (falling back to `author_name`). Titles are unique case-insensitively because URLs derive from them; lookups ignore case. Deleting a recipe cascades to notes, photos and favorites.
 - **Client calls**: use `api()` from `src/lib/api.ts` for JSON routes.
 
 ### Image Fetching Strategy (Critical Pattern)
@@ -83,7 +83,7 @@ Copy `.env.example` to `.env.local` and fill it in. Required: `DATABASE_URL`, `B
 
 ### Critical Gotchas
 
-- **Recipe slug matching**: Server-side looks the recipe up by exact `title`, so title casing must match exactly
+- **Recipe slug matching**: Server-side looks the recipe up by `title` (case-insensitive); titles are unique
 - **Next.js Image**: Only Vercel Blob (and legacy Firebase Storage) hosts are whitelisted in `next.config.ts` - Unsplash URLs use regular `<img>`
 - **Mixed file extensions**: Don't convert `.jsx` auth files to `.tsx` without updating OAuth imports
 - **Notes format migration**: Always check if `notes` is string or array in components
@@ -92,5 +92,5 @@ Copy `.env.example` to `.env.local` and fill it in. Required: `DATABASE_URL`, `B
 
 - **Unsplash**: See [UNSPLASH_SETUP.md](UNSPLASH_SETUP.md) for query building logic (tags → title keywords → full title)
 - **Algolia**: Index must have `title`, `tags`, `createdBy`, `objectID` fields; no admin SDK (manual sync required)
-- **Photo storage**: `POST /api/recipes/[id]/photos` re-encodes to WebP (1600px max) and stores via `src/lib/storage.ts` (Vercel Blob, or `public/uploads` in dev); the URL is stored in the recipe's `photos` array
+- **Photo storage**: `POST /api/recipes/[id]/photos` re-encodes to WebP (1600px max) and stores via `src/lib/storage.ts` (Vercel Blob, or `public/uploads` in dev); a `recipe_photos` row records the URL
 - **Vercel**: Deployment config in `vercel.json` (IAD1 region)

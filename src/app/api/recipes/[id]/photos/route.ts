@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { and, asc, count, eq, max } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { recipes } from "@/db/schema";
+import { recipePhotos, recipes } from "@/db/schema";
 import {
   apiError,
   FORBIDDEN,
@@ -10,14 +11,16 @@ import {
   readJson,
   UNAUTHORIZED,
 } from "@/lib/api-server";
-import { DEFAULT_USER_NAME, FILE_LIMITS } from "@/lib/constants";
+import { FILE_LIMITS } from "@/lib/constants";
+import { toPhoto } from "@/lib/recipes";
 import { getCurrentUser } from "@/lib/session";
 import { deleteImages, processPhoto, storeImage } from "@/lib/storage";
-import type { Photo } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export const maxDuration = 30;
+
+const limitMessage = `You can upload up to ${FILE_LIMITS.MAX_PHOTOS_PER_RECIPE} photos per recipe.`;
 
 // Upload a photo (multipart form field "file"). Any signed-in user may add photos.
 export async function POST(request: Request, { params }: Ctx) {
@@ -25,17 +28,12 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!user) return UNAUTHORIZED();
 
   const { id } = await params;
-  const [existing] = await db
-    .select({ photos: recipes.photos })
-    .from(recipes)
-    .where(eq(recipes.id, id))
-    .limit(1);
-  if (!existing) return NOT_FOUND();
-  if ((existing.photos?.length ?? 0) >= FILE_LIMITS.MAX_PHOTOS_PER_RECIPE) {
-    return apiError(
-      `You can upload up to ${FILE_LIMITS.MAX_PHOTOS_PER_RECIPE} photos per recipe.`,
-      400
-    );
+  const existing = await db
+    .select({ id: recipePhotos.id })
+    .from(recipePhotos)
+    .where(eq(recipePhotos.recipeId, id));
+  if (existing.length >= FILE_LIMITS.MAX_PHOTOS_PER_RECIPE) {
+    return apiError(limitMessage, 400);
   }
 
   let file: File | null = null;
@@ -65,110 +63,109 @@ export async function POST(request: Request, { params }: Ctx) {
     console.error("Error storing photo:", error);
     return apiError("Photo upload is unavailable right now.", 503);
   }
-  const photo: Photo = {
-    url,
-    addedBy: user.name || DEFAULT_USER_NAME,
-    addedByUserId: user.id,
-    addedAt: new Date().toISOString(),
-  };
 
+  // Lock the recipe row so concurrent uploads can't exceed the limit or
+  // pick the same position
   const saved = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ photos: recipes.photos })
+    const [recipe] = await tx
+      .select({ id: recipes.id })
       .from(recipes)
       .where(eq(recipes.id, id))
       .for("update");
-    if (!row || row.photos.length >= FILE_LIMITS.MAX_PHOTOS_PER_RECIPE) {
-      return false;
-    }
-    await tx
-      .update(recipes)
-      .set({ photos: [...row.photos, photo] })
-      .where(eq(recipes.id, id));
-    return true;
+    if (!recipe) return "not_found" as const;
+
+    const [stats] = await tx
+      .select({ count: count(), lastPosition: max(recipePhotos.position) })
+      .from(recipePhotos)
+      .where(eq(recipePhotos.recipeId, id));
+    if (stats.count >= FILE_LIMITS.MAX_PHOTOS_PER_RECIPE) return "limit" as const;
+
+    const [row] = await tx
+      .insert(recipePhotos)
+      .values({
+        id: randomUUID(),
+        recipeId: id,
+        url,
+        userId: user.id,
+        uploaderName: user.name,
+        position: (stats.lastPosition ?? -1) + 1,
+      })
+      .returning();
+    return row;
   });
 
-  if (!saved) {
+  if (saved === "not_found" || saved === "limit") {
     await deleteImages([url]).catch(() => {});
-    return apiError("Could not save photo. Please try again.", 409);
+    return saved === "not_found" ? NOT_FOUND() : apiError(limitMessage, 400);
   }
 
-  return NextResponse.json(photo, { status: 201 });
+  return NextResponse.json(toPhoto(saved), { status: 201 });
 }
 
-// Delete a photo ({ url }). Admins and the photo's uploader may delete it.
+// Delete a photo ({ id }). Admins and the photo's uploader may delete it.
 export async function DELETE(request: Request, { params }: Ctx) {
   const user = await getCurrentUser();
   if (!user) return UNAUTHORIZED();
 
   const { id } = await params;
-  const body = await readJson<{ url?: string }>(request);
-  if (!body?.url) return apiError("Missing photo url", 400);
+  const body = await readJson<{ id?: string }>(request);
+  if (typeof body?.id !== "string") return apiError("Missing photo id", 400);
 
-  const result = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ photos: recipes.photos })
-      .from(recipes)
-      .where(eq(recipes.id, id))
-      .for("update");
-    if (!row) return "not_found" as const;
+  const [photo] = await db
+    .select()
+    .from(recipePhotos)
+    .where(and(eq(recipePhotos.id, body.id), eq(recipePhotos.recipeId, id)))
+    .limit(1);
+  if (!photo) return NOT_FOUND();
+  if (!user.isAdmin && photo.userId !== user.id) return FORBIDDEN();
 
-    const photo = row.photos.find((p) => p.url === body.url);
-    if (!photo) return "not_found" as const;
-    if (!user.isAdmin && photo.addedByUserId !== user.id) {
-      return "forbidden" as const;
-    }
-
-    await tx
-      .update(recipes)
-      .set({ photos: row.photos.filter((p) => p.url !== body.url) })
-      .where(eq(recipes.id, id));
-    return "ok" as const;
-  });
-
-  if (result === "not_found") return NOT_FOUND();
-  if (result === "forbidden") return FORBIDDEN();
+  await db.delete(recipePhotos).where(eq(recipePhotos.id, photo.id));
 
   try {
-    await deleteImages([body.url]);
+    await deleteImages([photo.url]);
   } catch (error) {
     console.error("Error deleting photo from storage:", error);
   }
   return NextResponse.json({ ok: true });
 }
 
-// Reorder photos ({ urls }). Only admins and the recipe owner may reorder.
+// Reorder photos ({ ids }). Only admins and the recipe owner may reorder.
 export async function PUT(request: Request, { params }: Ctx) {
   const user = await getCurrentUser();
   if (!user) return UNAUTHORIZED();
 
   const { id } = await params;
-  const body = await readJson<{ urls?: string[] }>(request);
-  if (!Array.isArray(body?.urls)) return apiError("Missing photo order", 400);
-  const urls = body.urls;
+  const body = await readJson<{ ids?: string[] }>(request);
+  if (!Array.isArray(body?.ids)) return apiError("Missing photo order", 400);
+  const requested = body.ids;
 
   const result = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({
-        photos: recipes.photos,
-        createdByUserId: recipes.createdByUserId,
-      })
+    const [recipe] = await tx
+      .select({ createdByUserId: recipes.createdByUserId })
       .from(recipes)
       .where(eq(recipes.id, id))
       .for("update");
-    if (!row) return "not_found" as const;
-    if (!isAdminOrOwner(user, row.createdByUserId)) return "forbidden" as const;
+    if (!recipe) return "not_found" as const;
+    if (!isAdminOrOwner(user, recipe.createdByUserId)) return "forbidden" as const;
 
-    // Reorder existing photos only; never add or drop photos via this endpoint
-    const byUrl = new Map(row.photos.map((p) => [p.url, p]));
-    const orderedUrls = [...new Set(urls)].filter((u) => byUrl.has(u));
-    const ordered = orderedUrls.map((u) => byUrl.get(u)!);
-    const remaining = row.photos.filter((p) => !orderedUrls.includes(p.url));
+    const current = await tx
+      .select({ id: recipePhotos.id })
+      .from(recipePhotos)
+      .where(eq(recipePhotos.recipeId, id))
+      .orderBy(asc(recipePhotos.position), asc(recipePhotos.createdAt));
 
-    await tx
-      .update(recipes)
-      .set({ photos: [...ordered, ...remaining] })
-      .where(eq(recipes.id, id));
+    // Reorder existing photos only; anything not listed keeps its relative
+    // order after the listed ones.
+    const known = new Set(current.map((p) => p.id));
+    const listed = [...new Set(requested)].filter((p) => known.has(p));
+    const rest = current.map((p) => p.id).filter((p) => !listed.includes(p));
+
+    for (const [position, photoId] of [...listed, ...rest].entries()) {
+      await tx
+        .update(recipePhotos)
+        .set({ position })
+        .where(eq(recipePhotos.id, photoId));
+    }
     return "ok" as const;
   });
 

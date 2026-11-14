@@ -3,46 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { DEFAULT_USER_NAME } from "@/lib/constants";
 import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
 
 interface UseRecipeNotesProps {
   recipeId: string;
-  notes: any;
-  notesUpdatedBy: string;
-  notesUpdatedAt: string;
+  notes?: Note[];
 }
 
-/**
- * Normalize notes to array format (handles legacy string format)
- */
-function normalizeNotes(
-  notes: any,
-  notesUpdatedBy?: string,
-  notesUpdatedAt?: string
-): Note[] {
-  if (Array.isArray(notes)) {
-    return notes;
-  }
-  if (notes) {
-    return [
-      {
-        text: notes,
-        addedBy: notesUpdatedBy || DEFAULT_USER_NAME,
-        addedAt: notesUpdatedAt || new Date().toISOString(),
-      },
-    ];
-  }
-  return [];
-}
-
-export function useRecipeNotes({
-  recipeId,
-  notes,
-  notesUpdatedBy,
-  notesUpdatedAt,
-}: UseRecipeNotesProps) {
+export function useRecipeNotes({ recipeId, notes }: UseRecipeNotesProps) {
   const router = useRouter();
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [newNote, setNewNote] = useState("");
@@ -50,15 +19,12 @@ export function useRecipeNotes({
   const [error, setError] = useState("");
   const [editingNoteIndex, setEditingNoteIndex] = useState<number | null>(null);
   const [editedNoteText, setEditedNoteText] = useState("");
-  const [localNotes, setLocalNotes] = useState<Note[]>(
-    normalizeNotes(notes, notesUpdatedBy, notesUpdatedAt)
-  );
+  const [localNotes, setLocalNotes] = useState<Note[]>(notes ?? []);
 
   // Update localNotes when notes prop changes
   useEffect(() => {
-    const updatedNotes = normalizeNotes(notes, notesUpdatedBy, notesUpdatedAt);
-    setLocalNotes(updatedNotes);
-  }, [notes, notesUpdatedBy, notesUpdatedAt]);
+    setLocalNotes(notes ?? []);
+  }, [notes]);
 
   // Save notes to database
   const handleSaveNotes = async () => {
@@ -102,7 +68,7 @@ export function useRecipeNotes({
     try {
       const { notes: updatedNotes } = await api<{ notes: Note[] }>(
         `/api/recipes/${recipeId}/notes`,
-        { method: "PATCH", json: { index, text: editedNoteText } }
+        { method: "PATCH", json: { id: localNotes[index].id, text: editedNoteText } }
       );
 
       // Update local state immediately
@@ -130,7 +96,7 @@ export function useRecipeNotes({
     try {
       const { notes: updatedNotes } = await api<{ notes: Note[] }>(
         `/api/recipes/${recipeId}/notes`,
-        { method: "DELETE", json: { index } }
+        { method: "DELETE", json: { id: localNotes[index].id } }
       );
 
       // Update local state immediately

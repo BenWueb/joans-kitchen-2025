@@ -28,3 +28,12 @@ export const isAdminOrOwner = (
   user: CurrentUser,
   ownerId: string | null | undefined
 ) => user.isAdmin === true || (!!ownerId && ownerId === user.id);
+
+/** Postgres unique_violation (also when wrapped by Drizzle's query error). */
+export function isUniqueViolation(error: unknown): boolean {
+  const e = error as { code?: string; cause?: { code?: string } };
+  return e?.code === "23505" || e?.cause?.code === "23505";
+}
+
+export const DUPLICATE_TITLE = () =>
+  apiError("A recipe with that title already exists", 409);

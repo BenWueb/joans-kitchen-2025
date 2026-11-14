@@ -1,39 +1,122 @@
 import "server-only";
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { favorites, recipes, user } from "@/db/schema";
+import {
+  favorites,
+  recipeNotes,
+  recipePhotos,
+  recipes,
+  user,
+} from "@/db/schema";
 import { DEFAULT_RECIPE_IMAGE } from "./constants";
-import type { FavoritedRecipe, Recipe } from "./types";
+import type { FavoritedRecipe, Note, Photo, Recipe, RecipeSummary } from "./types";
 
 // Re-export shared types for convenience in server-component imports
 export type { Recipe, FavoritedRecipe } from "./types";
 
 type RecipeRow = typeof recipes.$inferSelect;
+type RecipeRowWithAuthor = { recipe: RecipeRow; authorUserName: string | null };
+
+export const toNote = (
+  n: typeof recipeNotes.$inferSelect,
+  liveName?: string | null
+): Note => ({
+  id: n.id,
+  text: n.text,
+  addedBy: liveName || n.authorName,
+  addedByUserId: n.userId ?? undefined,
+  addedAt: n.createdAt.toISOString(),
+  editedAt: n.editedAt?.toISOString(),
+});
+
+export const toPhoto = (
+  p: typeof recipePhotos.$inferSelect,
+  liveName?: string | null
+): Photo => ({
+  id: p.id,
+  url: p.url,
+  addedBy: liveName || p.uploaderName,
+  addedByUserId: p.userId ?? undefined,
+  addedAt: p.createdAt.toISOString(),
+});
+
+/** Photos for many recipes in one query, in display order. */
+export async function getPhotosByRecipeIds(ids: string[]) {
+  const byRecipe = new Map<string, Photo[]>();
+  if (ids.length === 0) return byRecipe;
+
+  const rows = await db
+    .select({ photo: recipePhotos, name: user.name })
+    .from(recipePhotos)
+    .leftJoin(user, eq(user.id, recipePhotos.userId))
+    .where(inArray(recipePhotos.recipeId, ids))
+    .orderBy(asc(recipePhotos.position), asc(recipePhotos.createdAt));
+
+  for (const { photo, name } of rows) {
+    const list = byRecipe.get(photo.recipeId) ?? [];
+    list.push(toPhoto(photo, name));
+    byRecipe.set(photo.recipeId, list);
+  }
+  return byRecipe;
+}
+
+async function getNotesByRecipeIds(ids: string[]) {
+  const byRecipe = new Map<string, Note[]>();
+  if (ids.length === 0) return byRecipe;
+
+  const rows = await db
+    .select({ note: recipeNotes, name: user.name })
+    .from(recipeNotes)
+    .leftJoin(user, eq(user.id, recipeNotes.userId))
+    .where(inArray(recipeNotes.recipeId, ids))
+    .orderBy(desc(recipeNotes.createdAt));
+
+  for (const { note, name } of rows) {
+    const list = byRecipe.get(note.recipeId) ?? [];
+    list.push(toNote(note, name));
+    byRecipe.set(note.recipeId, list);
+  }
+  return byRecipe;
+}
+
+/** Selects recipes together with their author's current display name. */
+const selectRecipes = () =>
+  db
+    .select({ recipe: recipes, authorUserName: user.name })
+    .from(recipes)
+    .leftJoin(user, eq(user.id, recipes.createdByUserId));
 
 /**
- * Convert a database row to the plain, serializable Recipe shape used by
- * components (`created` keeps the {seconds, nanoseconds} form the UI expects).
+ * Convert database rows to the plain, serializable Recipe shape used by
+ * components. Notes and photos are loaded in batch for all rows.
+ * (`created` keeps the {seconds, nanoseconds} form the UI expects, and the
+ * instructions column is exposed as `recipe`.)
  */
-export function toRecipe(row: RecipeRow): Recipe {
-  return {
+async function hydrate(rows: RecipeRowWithAuthor[]): Promise<Recipe[]> {
+  const ids = rows.map((r) => r.recipe.id);
+  const [notes, photos] = await Promise.all([
+    getNotesByRecipeIds(ids),
+    getPhotosByRecipeIds(ids),
+  ]);
+
+  return rows.map(({ recipe: row, authorUserName }) => ({
     id: row.id,
     title: row.title,
     ingredients: row.ingredients,
-    recipe: row.recipe,
+    recipe: row.instructions,
     category: row.category,
-    createdBy: row.createdBy,
+    createdBy: authorUserName || row.authorName,
     createdByUserId: row.createdByUserId ?? undefined,
     created: {
-      seconds: Math.floor(row.created.getTime() / 1000),
+      seconds: Math.floor(row.createdAt.getTime() / 1000),
       nanoseconds: 0,
     },
-    notes: row.notes,
-    photos: row.photos,
-    imageUrls: row.imageUrls,
+    notes: notes.get(row.id) ?? [],
+    photos: photos.get(row.id) ?? [],
     unsplashImageUrl: row.unsplashImageUrl ?? undefined,
     unsplashPhotographer: row.unsplashPhotographer ?? undefined,
     unsplashPhotographerUrl: row.unsplashPhotographerUrl ?? undefined,
-  };
+  }));
 }
 
 /**
@@ -41,12 +124,8 @@ export function toRecipe(row: RecipeRow): Recipe {
  */
 export async function getRecipeById(recipeId: string): Promise<Recipe | null> {
   try {
-    const [row] = await db
-      .select()
-      .from(recipes)
-      .where(eq(recipes.id, recipeId))
-      .limit(1);
-    return row ? toRecipe(row) : null;
+    const rows = await selectRecipes().where(eq(recipes.id, recipeId)).limit(1);
+    return (await hydrate(rows))[0] ?? null;
   } catch (error) {
     console.error("Error fetching recipe:", error);
     return null;
@@ -60,11 +139,8 @@ export async function getRecipesByIds(recipeIds: string[]): Promise<Recipe[]> {
   try {
     if (recipeIds.length === 0) return [];
 
-    const rows = await db
-      .select()
-      .from(recipes)
-      .where(inArray(recipes.id, recipeIds));
-    const byId = new Map(rows.map((r) => [r.id, toRecipe(r)]));
+    const rows = await selectRecipes().where(inArray(recipes.id, recipeIds));
+    const byId = new Map((await hydrate(rows)).map((r) => [r.id, r]));
 
     return recipeIds
       .map((id) => byId.get(id))
@@ -76,20 +152,26 @@ export async function getRecipesByIds(recipeIds: string[]): Promise<Recipe[]> {
 }
 
 /**
- * Get recipe by title (server-side). Title must match exactly.
+ * Get recipe by title (server-side). Matching ignores case.
  */
 export async function getRecipeByTitle(recipeName: string) {
   try {
-    const [row] = await db
-      .select()
-      .from(recipes)
-      .where(eq(recipes.title, recipeName))
+    const rows = await selectRecipes()
+      .where(sql`lower(${recipes.title}) = lower(${recipeName})`)
       .limit(1);
-    return row ? toRecipe(row) : null;
+    return (await hydrate(rows))[0] ?? null;
   } catch (error) {
     console.error("Error fetching recipe by title:", error);
     return null;
   }
+}
+
+/** Compact recipe info (id, title, author, photos) for the given recipe rows. */
+export async function toSummaries(
+  rows: { id: string; title: string; createdBy: string }[]
+): Promise<RecipeSummary[]> {
+  const photos = await getPhotosByRecipeIds(rows.map((r) => r.id));
+  return rows.map((r) => ({ ...r, photos: photos.get(r.id) ?? [] }));
 }
 
 /**
@@ -115,12 +197,14 @@ export async function getRecentlyFavoritedRecipes(
     if (latest.length === 0) return [];
 
     const ids = latest.map((l) => l.recipeId);
-    const [recipeRows, favoriteRows] = await Promise.all([
-      db.select().from(recipes).where(inArray(recipes.id, ids)),
+    const [recipeRows, favoriteRows, photos] = await Promise.all([
+      db
+        .select({ id: recipes.id, title: recipes.title })
+        .from(recipes)
+        .where(inArray(recipes.id, ids)),
       db
         .select({
           recipeId: favorites.recipeId,
-          createdAt: favorites.createdAt,
           name: user.name,
           email: user.email,
         })
@@ -128,13 +212,14 @@ export async function getRecentlyFavoritedRecipes(
         .innerJoin(user, eq(user.id, favorites.userId))
         .where(inArray(favorites.recipeId, ids))
         .orderBy(desc(favorites.createdAt)),
+      getPhotosByRecipeIds(ids),
     ]);
 
     const recipeMap = new Map(recipeRows.map((r) => [r.id, r]));
     const favoriterMap = new Map<string, string>();
     for (const f of favoriteRows) {
       if (!favoriterMap.has(f.recipeId)) {
-        favoriterMap.set(f.recipeId, f.name || f.email || "Anonymous");
+        favoriterMap.set(f.recipeId, f.name || "Anonymous");
       }
     }
 
@@ -144,11 +229,8 @@ export async function getRecentlyFavoritedRecipes(
         if (!recipe) return null;
         return {
           id: recipe.id,
-          title: recipe.title || "Untitled Recipe",
-          imageUrl:
-            recipe.photos?.[0]?.url ||
-            recipe.imageUrls?.[0] ||
-            DEFAULT_RECIPE_IMAGE,
+          title: recipe.title,
+          imageUrl: photos.get(recipe.id)?.[0]?.url || DEFAULT_RECIPE_IMAGE,
           favoritedBy: favoriterMap.get(recipe.id) ?? "Anonymous",
           favoritedAt: l.favoritedAt,
         };
@@ -173,9 +255,7 @@ export async function getRecipesByCategory(opts: {
     const cat = (category || "").trim();
     if (!cat) return [];
 
-    const rows = await db
-      .select()
-      .from(recipes)
+    const rows = await selectRecipes()
       .where(
         excludeId
           ? and(eq(recipes.category, cat), ne(recipes.id, excludeId))
@@ -183,7 +263,7 @@ export async function getRecipesByCategory(opts: {
       )
       .limit(limit);
 
-    return rows.map(toRecipe);
+    return hydrate(rows);
   } catch (error) {
     console.error("Error fetching recipes by category:", error);
     return [];

@@ -17,7 +17,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Concern | Implementation |
 | --- | --- |
-| Database | Postgres via Drizzle ORM (`src/db/schema.ts`, migrations in `drizzle/`) |
+| Database | Postgres via Drizzle ORM (`src/db/schema.ts`, migrations in `drizzle/`): `recipes`, `recipe_notes`, `recipe_photos`, `favorites` plus the Better Auth tables |
 | Auth | [Better Auth](https://better-auth.com): email/password + optional Google (`src/lib/auth.ts`, `src/lib/auth-client.ts`) |
 | Photos | Vercel Blob in production, `public/uploads` in development (`src/lib/storage.ts`); images are downscaled in the browser and re-encoded to WebP by `sharp` on the server |
 | Email | Resend HTTP API (`src/lib/email.ts`); logged to the console when `RESEND_API_KEY` is unset |

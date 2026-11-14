@@ -119,7 +119,7 @@ export function useRecipePhotos({
 
       await api(`/api/recipes/${finalRecipeId}/photos`, {
         method: "DELETE",
-        json: { url: photo.url },
+        json: { id: photo.id },
       });
 
       router.refresh();
@@ -145,7 +145,7 @@ export function useRecipePhotos({
       }
       await api(`/api/recipes/${finalRecipeId}/photos`, {
         method: "PUT",
-        json: { urls: photos.map((p) => p.url) },
+        json: { ids: photos.map((p) => p.id) },
       });
       router.refresh();
       return true;

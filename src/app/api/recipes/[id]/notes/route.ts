@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { recipes } from "@/db/schema";
+import { recipeNotes, recipes, user as users } from "@/db/schema";
 import {
   apiError,
   FORBIDDEN,
@@ -9,30 +10,19 @@ import {
   readJson,
   UNAUTHORIZED,
 } from "@/lib/api-server";
-import { DEFAULT_USER_NAME } from "@/lib/constants";
+import { toNote } from "@/lib/recipes";
 import { getCurrentUser } from "@/lib/session";
-import type { Note } from "@/lib/types";
 
 type Ctx = { params: Promise<{ id: string }> };
-type Mutation = (notes: Note[]) => Note[] | Response;
 
-// Notes live in a jsonb array, so each change is a read-modify-write inside a
-// row-locked transaction to avoid losing concurrent edits.
-async function mutateNotes(id: string, mutate: Mutation) {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .select({ notes: recipes.notes })
-      .from(recipes)
-      .where(eq(recipes.id, id))
-      .for("update");
-    if (!row) return NOT_FOUND();
-
-    const result = mutate(Array.isArray(row.notes) ? row.notes : []);
-    if (result instanceof Response) return result;
-
-    await tx.update(recipes).set({ notes: result }).where(eq(recipes.id, id));
-    return NextResponse.json({ notes: result });
-  });
+async function listNotes(recipeId: string) {
+  const rows = await db
+    .select({ note: recipeNotes, name: users.name })
+    .from(recipeNotes)
+    .leftJoin(users, eq(users.id, recipeNotes.userId))
+    .where(eq(recipeNotes.recipeId, recipeId))
+    .orderBy(desc(recipeNotes.createdAt));
+  return NextResponse.json({ notes: rows.map((r) => toNote(r.note, r.name)) });
 }
 
 export async function POST(request: Request, { params }: Ctx) {
@@ -44,15 +34,38 @@ export async function POST(request: Request, { params }: Ctx) {
   const text = body?.text?.trim();
   if (!text) return apiError("Please enter a note", 400);
 
-  return mutateNotes(id, (notes) => [
-    {
-      text,
-      addedBy: user.name || DEFAULT_USER_NAME,
-      addedByUserId: user.id,
-      addedAt: new Date().toISOString(),
-    },
-    ...notes,
-  ]);
+  const [recipe] = await db
+    .select({ id: recipes.id })
+    .from(recipes)
+    .where(eq(recipes.id, id))
+    .limit(1);
+  if (!recipe) return NOT_FOUND();
+
+  await db.insert(recipeNotes).values({
+    id: randomUUID(),
+    recipeId: id,
+    userId: user.id,
+    authorName: user.name,
+    text,
+  });
+  return listNotes(id);
+}
+
+// Edit/delete: only the note's author or an admin
+async function findOwnedNote(
+  user: { id: string; isAdmin?: boolean | null },
+  recipeId: string,
+  noteId: unknown
+) {
+  if (typeof noteId !== "string") return { error: NOT_FOUND() };
+  const [note] = await db
+    .select()
+    .from(recipeNotes)
+    .where(and(eq(recipeNotes.id, noteId), eq(recipeNotes.recipeId, recipeId)))
+    .limit(1);
+  if (!note) return { error: NOT_FOUND() };
+  if (!user.isAdmin && note.userId !== user.id) return { error: FORBIDDEN() };
+  return { note };
 }
 
 export async function PATCH(request: Request, { params }: Ctx) {
@@ -60,22 +73,18 @@ export async function PATCH(request: Request, { params }: Ctx) {
   if (!user) return UNAUTHORIZED();
 
   const { id } = await params;
-  const body = await readJson<{ index?: number; text?: string }>(request);
+  const body = await readJson<{ id?: string; text?: string }>(request);
   const text = body?.text?.trim();
   if (!text) return apiError("Please enter a note", 400);
-  const index = body?.index;
 
-  return mutateNotes(id, (notes) => {
-    if (!Number.isInteger(index) || index! < 0 || index! >= notes.length) {
-      return NOT_FOUND();
-    }
-    const note = notes[index!];
-    if (!user.isAdmin && note.addedByUserId !== user.id) return FORBIDDEN();
+  const { note, error } = await findOwnedNote(user, id, body?.id);
+  if (error) return error;
 
-    const next = [...notes];
-    next[index!] = { ...note, text, editedAt: new Date().toISOString() };
-    return next;
-  });
+  await db
+    .update(recipeNotes)
+    .set({ text, editedAt: new Date() })
+    .where(eq(recipeNotes.id, note.id));
+  return listNotes(id);
 }
 
 export async function DELETE(request: Request, { params }: Ctx) {
@@ -83,16 +92,11 @@ export async function DELETE(request: Request, { params }: Ctx) {
   if (!user) return UNAUTHORIZED();
 
   const { id } = await params;
-  const body = await readJson<{ index?: number }>(request);
-  const index = body?.index;
+  const body = await readJson<{ id?: string }>(request);
 
-  return mutateNotes(id, (notes) => {
-    if (!Number.isInteger(index) || index! < 0 || index! >= notes.length) {
-      return NOT_FOUND();
-    }
-    if (!user.isAdmin && notes[index!].addedByUserId !== user.id) {
-      return FORBIDDEN();
-    }
-    return notes.filter((_, i) => i !== index);
-  });
+  const { note, error } = await findOwnedNote(user, id, body?.id);
+  if (error) return error;
+
+  await db.delete(recipeNotes).where(eq(recipeNotes.id, note.id));
+  return listNotes(id);
 }

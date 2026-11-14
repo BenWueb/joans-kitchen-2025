@@ -8,17 +8,14 @@ export interface Recipe {
   createdBy: string;
   ingredients?: string;
   recipe?: string;
-  notes?: any;
+  notes?: Note[];
   category?: string;
-  imageUrls?: string[];
   photos?: Photo[];
   unsplashImageUrl?: string;
   unsplashPhotographer?: string;
   unsplashPhotographerUrl?: string;
   created?: { seconds: number; nanoseconds: number };
   createdByUserId?: string;
-  notesUpdatedBy?: string;
-  notesUpdatedAt?: string;
 }
 
 export interface UserData {
@@ -38,6 +35,7 @@ export interface RecipeSummary {
 }
 
 export interface Note {
+  id: string;
   text: string;
   addedBy: string;
   addedByUserId?: string;
@@ -46,6 +44,7 @@ export interface Note {
 }
 
 export interface Photo {
+  id: string;
   url: string;
   addedBy: string;
   addedByUserId?: string;
