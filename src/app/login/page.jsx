@@ -2,6 +2,7 @@
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import OAuth from "@/components/OAuth";
+import { googleAuthEnabled } from "@/lib/auth-client";
 import { useLogin } from "@/hooks/useLogin";
 
 function Login() {
@@ -82,16 +83,20 @@ function Login() {
             </form>
 
             <div className="space-y-5 mt-5">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or</span>
-                </div>
-              </div>
+              {googleAuthEnabled && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-gray-500">Or</span>
+                    </div>
+                  </div>
 
-              <OAuth />
+                  <OAuth />
+                </>
+              )}
 
               <p className="text-center text-sm text-gray-600">
                 Don't have an account?{" "}

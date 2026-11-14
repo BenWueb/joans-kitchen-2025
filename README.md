@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Joan's Kitchen
 
-## Getting Started
+Next.js 16 recipe app backed by Postgres (Drizzle ORM), Better Auth, Vercel Blob photo storage, and Algolia search.
 
-First, run the development server:
+## Getting started
 
 ```bash
+cp .env.example .env.local   # then fill in DATABASE_URL and BETTER_AUTH_SECRET
+npm install
+npm run db:migrate           # create tables
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Backend overview
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Concern | Implementation |
+| --- | --- |
+| Database | Postgres via Drizzle ORM (`src/db/schema.ts`, migrations in `drizzle/`): `recipes`, `recipe_notes`, `recipe_photos`, `favorites` plus the Better Auth tables |
+| Auth | [Better Auth](https://better-auth.com): email/password + optional Google (`src/lib/auth.ts`, `src/lib/auth-client.ts`) |
+| Photos | Vercel Blob in production, `public/uploads` in development (`src/lib/storage.ts`); images are downscaled in the browser and re-encoded to WebP by `sharp` on the server |
+| Email | Resend HTTP API (`src/lib/email.ts`); logged to the console when `RESEND_API_KEY` is unset |
+| Mutations | Route handlers under `src/app/api/**` (authorization is enforced there) |
 
-## Learn More
+Changing the schema: edit `src/db/schema.ts`, run `npm run db:generate`, commit the new SQL in `drizzle/`, then `npm run db:migrate`.
 
-To learn more about Next.js, take a look at the following resources:
+### Admins
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Admin status is the `is_admin` column on the `user` table (it can't be set through the API):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```sql
+update "user" set is_admin = true where email = 'you@example.com';
+```
 
-## Deploy on Vercel
+## Migrating existing Firebase data
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Apply the schema to the target database: `npm run db:migrate`.
+2. Download a Firebase service account key and set `FIREBASE_SERVICE_ACCOUNT_PATH` (see `.env.example`). Set `BLOB_READ_WRITE_TOKEN` so photos are re-hosted.
+3. Preview with `npm run migrate:firebase -- --dry-run`, then run `npm run migrate:firebase` (add `--skip-photos` to leave photos on Firebase Storage).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Users, recipes (IDs preserved), favorites, notes and photos are copied; the script can be re-run safely. Google users keep working. Firebase password hashes can't be imported, so email/password users need to use **Forgot password** once.
+
+## Deploying (Vercel)
+
+Set the variables from `.env.example` in the project settings (`BETTER_AUTH_URL` = your production URL), add a Postgres database and a Blob store, and run `npm run db:migrate` against the production database.

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Next.js 16 recipe management app with Firebase backend, Algolia search, and Unsplash image integration. Uses App Router with mixed TypeScript (.tsx/.ts) and JavaScript (.jsx/.js) files.
+Next.js 16 recipe management app with a Postgres (Drizzle) backend, Better Auth, Vercel Blob photo storage, Algolia search, and Unsplash image integration. Uses App Router with mixed TypeScript (.tsx/.ts) and JavaScript (.jsx/.js) files.
 
 ## Architecture & Data Flow
 
@@ -10,34 +10,25 @@ Next.js 16 recipe management app with Firebase backend, Algolia search, and Unsp
 
 - **Mixed file extensions**: `.jsx` for auth/OAuth components, `.tsx` for everything else
 - **Dynamic routes**: `[recipe]/page.tsx` converts underscored URLs to recipe titles (e.g., `Grilled_Chicken` → "grilled chicken")
-- **Hook pattern**: Custom hooks in `src/hooks/` handle all Firebase operations and UI state (e.g., `useRecipeActions`, `usePhotoUpload`)
+- **Hook pattern**: Custom hooks in `src/hooks/` call the app's API routes and manage UI state (e.g., `useRecipeActions`, `usePhotoUpload`)
 - **Component structure**: "Smart" components (with hooks) live in `src/components/`, pure layout components inline in pages
 
-### Firebase Integration (`src/firestore.config.js`)
+### Backend Integration
 
-- Exports `db`, `auth`, `storage` as named exports (not default)
-- All Firebase operations use modular v9+ SDK syntax (e.g., `doc(db, "recipes", id)`)
-- **Collections**: `recipes` (main), `Users` (favorites stored in `favorites: string[]` array)
-- **Recipe schema**:
-  ```javascript
-  {
-    title, ingredients, recipe, tags[],
-    imageUrls[], unsplashImageUrl, // Cached image URL
-    notes: [{text, addedBy, addedAt}], // Array format (legacy string format auto-converted)
-    photos: [{url, uploadedBy, uploadedAt}],
-    createdBy
-  }
-  ```
+- **Database**: Postgres via Drizzle. Schema in `src/db/schema.ts` (`user`/`session`/`account`/`verification` for Better Auth, plus `recipes`, `recipe_notes`, `recipe_photos` and `favorites`; all timestamps are timestamptz). Migrations are generated into `drizzle/` with `npm run db:generate` and applied with `npm run db:migrate`.
+- **Server reads** (server components): `src/lib/recipes.ts`. **Mutations** go through route handlers in `src/app/api/**`, which check the session via `getCurrentUser()` (`src/lib/session.ts`) and enforce permissions (admin-only field edits, owner/admin delete, note/photo authorship).
+- **Recipe shape** (`src/lib/types.ts`): `src/lib/recipes.ts` assembles a `Recipe` from the `recipes` row plus its `recipe_notes` (newest first) and `recipe_photos` (by `position`, 0 = cover). Notes and photos have stable ids, and the API addresses them by id. The `instructions` column is exposed as `recipe`, `created` as `{seconds, nanoseconds}`, and `createdBy` is the author's current account name (falling back to `author_name`). Titles are unique case-insensitively because URLs derive from them; lookups ignore case. Deleting a recipe cascades to notes, photos and favorites.
+- **Client calls**: use `api()` from `src/lib/api.ts` for JSON routes.
 
 ### Image Fetching Strategy (Critical Pattern)
 
 **Multi-layer caching** to minimize API calls (see [src/utils/unsplash.tsx](src/utils/unsplash.tsx)):
 
 1. User-uploaded photos (`photos[0].url`) - highest priority
-2. Firestore cached URL (`unsplashImageUrl`) - no API call
+2. Cached URL in the database (`unsplashImageUrl`) - no API call
 3. LocalStorage cache (30-day TTL) - client-side
 4. Fresh Unsplash API call - last resort
-5. Fallback image URL (hardcoded Firebase Storage)
+5. Fallback image (`DEFAULT_RECIPE_IMAGE`, served from `public/images/static`)
 
 **Implementation**: All image displays use `getOrFetchRecipeImage()` in useEffect, never direct URLs.
 
@@ -59,26 +50,15 @@ npm run start        # Production server
 
 ### Environment Variables Required
 
-Create `.env.local` with:
-
-```
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTHDOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECTID=...
-NEXT_PUBLIC_FIREBASE_STORAGEBUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGINGSENDERID=...
-NEXT_PUBLIC_FIREBASE_APPID=...
-NEXT_PUBLIC_ALGOLIA_APPID=...
-NEXT_PUBLIC_ALGOLIA_APIKEY=...
-NEXT_PUBLIC_UNSPLASH_ACCESS_KEY=...
-NEXT_PUBLIC_UNDER_CONSTRUCTION=false  # Enables maintenance mode via proxy.ts
-```
+Copy `.env.example` to `.env.local` and fill it in. Required: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_ALGOLIA_APPID`, `NEXT_PUBLIC_ALGOLIA_APIKEY`. Optional: Google OAuth (`GOOGLE_CLIENT_ID/SECRET`, `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED`), `RESEND_API_KEY`, `BLOB_READ_WRITE_TOKEN`, `NEXT_PUBLIC_UNSPLASH_ACCESS_KEY`, and `NEXT_PUBLIC_UNDER_CONSTRUCTION=true` (maintenance mode via `proxy.ts`).
 
 ### Authentication Flow
 
+- **Better Auth** (`src/lib/auth.ts`, mounted at `/api/auth/[...all]`); client in `src/lib/auth-client.ts`
 - **Login redirect**: Stores `returnUrl` in localStorage before navigating to `/login`, restored after sign-in
-- **OAuth**: Google sign-in via `src/components/OAuth.jsx`
-- **Auth state**: Use `getAuth().currentUser` directly, no custom auth context
+- **OAuth**: Google sign-in via `src/components/OAuth.jsx` (hidden unless `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`)
+- **Auth state**: `authClient.useSession()` / `useCurrentUser()`; on the server use `getCurrentUser()`. Admin = `user.isAdmin`
+- **Password reset**: `/forgot_password` emails a link that lands on `/reset_password`
 
 ## Key Patterns & Conventions
 
@@ -91,9 +71,9 @@ NEXT_PUBLIC_UNDER_CONSTRUCTION=false  # Enables maintenance mode via proxy.ts
 
 ### State Management
 
-- No global state library - uses React hooks + Firebase real-time updates
+- No global state library - uses React hooks; auth state comes from `authClient.useSession()`
 - **Custom hooks return objects** with all needed state/handlers (see `useRecipeActions` for pattern)
-- **Optimistic UI**: Local state arrays (`localNotes`, `localPhotos`) update immediately, Firebase syncs async
+- **Optimistic UI**: Local state arrays (`localNotes`, `localPhotos`) update immediately, the API call syncs async
 
 ### Error Handling
 
@@ -103,8 +83,8 @@ NEXT_PUBLIC_UNDER_CONSTRUCTION=false  # Enables maintenance mode via proxy.ts
 
 ### Critical Gotchas
 
-- **Recipe slug matching**: Server-side uses `getDocs(query(...))` with title, but title casing must match exactly
-- **Next.js Image**: Only Firebase Storage URLs whitelisted in `next.config.ts` - Unsplash URLs use regular `<img>`
+- **Recipe slug matching**: Server-side looks the recipe up by `title` (case-insensitive); titles are unique
+- **Next.js Image**: Only Vercel Blob (and legacy Firebase Storage) hosts are whitelisted in `next.config.ts` - Unsplash URLs use regular `<img>`
 - **Mixed file extensions**: Don't convert `.jsx` auth files to `.tsx` without updating OAuth imports
 - **Notes format migration**: Always check if `notes` is string or array in components
 
@@ -112,5 +92,5 @@ NEXT_PUBLIC_UNDER_CONSTRUCTION=false  # Enables maintenance mode via proxy.ts
 
 - **Unsplash**: See [UNSPLASH_SETUP.md](UNSPLASH_SETUP.md) for query building logic (tags → title keywords → full title)
 - **Algolia**: Index must have `title`, `tags`, `createdBy`, `objectID` fields; no admin SDK (manual sync required)
-- **Firebase Storage**: Photos uploaded to root bucket, URL returned and stored in `photos[]` array
+- **Photo storage**: `POST /api/recipes/[id]/photos` re-encodes to WebP (1600px max) and stores via `src/lib/storage.ts` (Vercel Blob, or `public/uploads` in dev); a `recipe_photos` row records the URL
 - **Vercel**: Deployment config in `vercel.json` (IAD1 region)

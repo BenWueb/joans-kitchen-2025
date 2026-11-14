@@ -31,11 +31,8 @@ function SingleRecipe({
   ingredients,
   recipe,
   notes,
-  notesUpdatedBy,
-  notesUpdatedAt,
   createdBy,
   createdByUserId,
-  imageUrls,
   unsplashImageUrl,
   category,
   created,
@@ -82,8 +79,6 @@ function SingleRecipe({
   } = useRecipeNotes({
     recipeId,
     notes,
-    notesUpdatedBy,
-    notesUpdatedAt,
   });
 
   // Recipe photos hook
@@ -169,7 +164,6 @@ function SingleRecipe({
     handleDeleteUnsplashCache,
   } = useAdminEditing({
     recipeId,
-    currentUserId,
     title: localTitle,
     ingredients: localIngredients,
     recipe: localRecipe,
@@ -435,30 +429,6 @@ function SingleRecipe({
             );
           }}
         />
-      )}
-
-      {/* Legacy imageUrls section */}
-      {imageUrls && imageUrls.length > 0 && (
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <h5 className="text-xl font-bold text-gray-700 mb-4">Photos</h5>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {imageUrls.map((img, index) => (
-              <a
-                key={index}
-                href={img}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="aspect-square overflow-hidden rounded-md border border-gray-200 hover:border-teal-500 transition-colors"
-              >
-                <img
-                  src={img}
-                  alt={`Recipe photo ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </a>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Owner actions */}

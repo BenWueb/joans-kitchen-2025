@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import { getOrFetchRecipeImage } from "@/utils/unsplash";
 import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants";
 
 interface UseRecipeImageProps {
   recipeId: string;
   title: string;
-  photos?: { url: string; uploadedAt: any; uploadedBy: string }[];
+  photos?: { url: string }[];
   unsplashImageUrl?: string;
 }
 
@@ -54,8 +55,7 @@ export function useRecipeImage({
       // (Avoid treating fallback/header images as Unsplash.)
       if (!normalizedPhotos.length && !!unsplashImageUrl) {
         try {
-          const { getRecipeClient } = await import("@/lib/firebase-client");
-          const recipeData = await getRecipeClient(recipeId);
+          const recipeData = await api(`/api/recipes/${recipeId}`);
           if (
             recipeData &&
             typeof recipeData === "object" &&

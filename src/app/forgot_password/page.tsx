@@ -3,8 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { sendPasswordResetEmail } from "firebase/auth";
-import { auth } from "@/firestore.config";
+import { authClient } from "@/lib/auth-client";
 import Navbar from "@/components/Navbar";
 
 function ForgotPassword() {
@@ -29,7 +28,11 @@ function ForgotPassword() {
     e.preventDefault();
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await authClient.requestPasswordReset({
+        email,
+        redirectTo: "/reset_password",
+      });
+      if (error) throw error;
       setFormData({ email: "" });
       setMessage("Password reset email sent! Check your inbox.");
       setTimeout(() => router.push("/login"), 2000);

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
 import Link from "next/link";
 import { recipeToUrl } from "@/utils/recipeUrl";
-import { Recipe } from "@/lib/firebase-server";
+import type { Recipe } from "@/lib/types";
 
 interface RecipeCarouselUIProps {
   recipes: Recipe[];
@@ -35,10 +35,11 @@ export default function RecipeCarouselUI({ recipes }: RecipeCarouselUIProps) {
   const currentRecipe = recipes[currentIndex];
   const currentImage =
     currentRecipe.photos?.[0]?.url ||
-    currentRecipe.imageUrls?.[0] ||
-    "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/jason-briscoe-GliaHAJ3_5A-unsplash.jpg?alt=media&token=592afcb6-578a-456b-8fa9-83d1125b3a6a";
+    "/images/static/jason-briscoe-GliaHAJ3_5A-unsplash.jpg";
 
   const searchUrl = recipeToUrl(currentRecipe.title);
+  // Notes are newest-first; quote the original (oldest) note
+  const featuredNote = currentRecipe.notes?.at(-1)?.text;
 
   return (
     <div className="relative w-full aspect-video md:aspect-21/9 rounded-lg shadow-lg overflow-hidden group mb-8">
@@ -63,9 +64,9 @@ export default function RecipeCarouselUI({ recipes }: RecipeCarouselUIProps) {
           </h2>
 
           {/* Notes in quotes */}
-          {currentRecipe.notes && (
+          {featuredNote && (
             <p className="text-sm sm:text-base md:text-lg lg:text-xl italic opacity-90 drop-shadow-md mb-2 line-clamp-2">
-              &ldquo;{currentRecipe.notes}&rdquo;
+              &ldquo;{featuredNote}&rdquo;
             </p>
           )}
 

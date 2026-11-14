@@ -14,15 +14,17 @@ import {
   MdInfoOutline,
 } from "react-icons/md";
 import Link from "next/link";
-import { redirect, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/utils/auth";
-import { auth } from "../firestore.config";
+import { authClient } from "@/lib/auth-client";
 
 function Navbar() {
   const [menuVisible, setMenuVisible] = useState(false);
   const menuButtonRef = useRef<HTMLDivElement>(null); // Ref for menu/close button
   const menuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname(); // Get current path
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -50,9 +52,10 @@ function Navbar() {
   };
 
   //Sign out
-  const signOut = () => {
-    logout(pathname); // Pass current path to store for later
-    redirect("/");
+  const signOut = async () => {
+    await logout(pathname); // Pass current path to store for later
+    router.push("/");
+    router.refresh();
   };
 
   // Store current path before navigating to login
@@ -145,7 +148,7 @@ function Navbar() {
 
               <div className="border-t border-gray-200 my-2"></div>
 
-              {auth.currentUser ? (
+              {session?.user ? (
                 <>
                   <Link href="/profile" className="w-full" onClick={toggleMenu}>
                     <li className="flex items-stretch gap-3 px-6 py-4 hover:bg-gray-50 transition-all duration-200 border-l-4 border-transparent hover:border-teal-500">

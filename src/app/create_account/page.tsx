@@ -2,13 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from "firebase/auth";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/firestore.config";
+import { authClient, googleAuthEnabled } from "@/lib/auth-client";
 import Navbar from "@/components/Navbar";
 import OAuth from "@/components/OAuth";
 
@@ -16,8 +10,6 @@ interface FormData {
   name: string;
   email: string;
   password: string;
-  favorites: never[];
-  recipes: never[];
 }
 
 function CreateAccount() {
@@ -25,8 +17,6 @@ function CreateAccount() {
     name: "",
     email: "",
     password: "",
-    favorites: [],
-    recipes: [],
   });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -50,25 +40,14 @@ function CreateAccount() {
     setMessage("");
 
     try {
-      const auth = getAuth();
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
+      // Better Auth signs the user in and sends the verification email
+      const { error: signUpError } = await authClient.signUp.email({
+        name,
         email,
-        password
-      );
-
-      const user = userCredential.user;
-
-      // Send verification email
-      await sendEmailVerification(user);
-
-      const formDataCopy: Partial<FormData> & {
-        timestamp?: ReturnType<typeof serverTimestamp>;
-      } = { ...formData };
-      delete formDataCopy.password;
-      formDataCopy.timestamp = serverTimestamp();
-
-      await setDoc(doc(db, "Users", user.uid), formDataCopy);
+        password,
+        callbackURL: "/profile",
+      });
+      if (signUpError) throw signUpError;
 
       setMessage(
         "Account created! Please check your email to verify your account."
@@ -77,24 +56,25 @@ function CreateAccount() {
       // Redirect after a delay to show the message
       setTimeout(() => {
         router.push("/profile");
+        router.refresh();
       }, 3000);
     } catch (error: any) {
       console.error("Account creation error:", error);
 
-      // Handle specific Firebase errors with generic messages for security
-      if (error.code === "auth/email-already-in-use") {
+      // Handle specific errors with generic messages for security
+      const code = error?.code;
+      if (
+        code === "USER_ALREADY_EXISTS" ||
+        code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
+      ) {
         setError(
           "Unable to create account. Please check your credentials or try logging in."
         );
-      } else if (error.code === "auth/invalid-email") {
+      } else if (code === "INVALID_EMAIL") {
         setError("Invalid email address. Please enter a valid email.");
-      } else if (error.code === "auth/weak-password") {
-        setError("Password must be at least 6 characters.");
-      } else if (error.code === "auth/operation-not-allowed") {
-        setError(
-          "Unable to create account at this time. Please contact support."
-        );
-      } else if (error.code === "auth/network-request-failed") {
+      } else if (code === "PASSWORD_TOO_SHORT") {
+        setError("Password must be at least 8 characters.");
+      } else if (error instanceof TypeError) {
         setError("Network error. Please check your connection and try again.");
       } else {
         setError("Unable to create account. Please try again.");
@@ -183,6 +163,7 @@ function CreateAccount() {
                   type="password"
                   placeholder="Enter your password"
                   onChange={onChange}
+                  minLength={8}
                   required
                 />
               </div>
@@ -196,16 +177,20 @@ function CreateAccount() {
             </form>
 
             <div className="space-y-5 mt-5">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Or</span>
-                </div>
-              </div>
+              {googleAuthEnabled && (
+                <>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-300"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-gray-500">Or</span>
+                    </div>
+                  </div>
 
-              <OAuth />
+                  <OAuth />
+                </>
+              )}
 
               <p className="text-center text-sm text-gray-600">
                 Already have an account?{" "}

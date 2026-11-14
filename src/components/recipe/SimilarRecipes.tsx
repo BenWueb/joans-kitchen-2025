@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getRecipesByCategory } from "@/lib/firebase-server";
+import { getRecipesByCategory } from "@/lib/recipes";
 import { DEFAULT_RECIPE_IMAGE } from "@/lib/constants";
 import { recipeToUrl } from "@/utils/recipeUrl";
 
@@ -29,7 +29,6 @@ export default async function SimilarRecipes(props: {
         {recipes.map((r) => {
           const image =
             (r as any).photos?.[0]?.url ||
-            (r as any).imageUrls?.[0] ||
             DEFAULT_RECIPE_IMAGE;
 
           return (

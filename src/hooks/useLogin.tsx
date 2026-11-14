@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { authClient } from "@/lib/auth-client";
 import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
 
 export function useLogin() {
@@ -30,14 +30,19 @@ export function useLogin() {
     setLoading(true);
 
     try {
-      const auth = getAuth();
-      await signInWithEmailAndPassword(auth, email, password);
+      const { error: signInError } = await authClient.signIn.email({
+        email,
+        password,
+      });
+      if (signInError) throw signInError;
+
       setFormData({ email: "", password: "" });
 
       // Get the return URL from localStorage or default to profile
       const returnUrl = localStorage.getItem("returnUrl") || "/profile";
       localStorage.removeItem("returnUrl"); // Clean up
-      setTimeout(() => router.push(returnUrl), 1000);
+      router.push(returnUrl);
+      router.refresh();
     } catch (error: any) {
       logError("useLogin", error);
       setLoading(false);

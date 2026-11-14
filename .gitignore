@@ -32,8 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
-# Firebase service account keys (NEVER commit these!)
+# Firebase service account keys (only needed to run scripts/migrate-from-firebase.ts; NEVER commit these!)
 *-firebase-adminsdk-*.json
 firebase-service-account.json
 serviceAccountKey.json
@@ -44,3 +45,6 @@ serviceAccountKey.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local dev photo uploads (see src/lib/storage.ts)
+/public/uploads

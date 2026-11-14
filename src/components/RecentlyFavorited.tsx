@@ -4,7 +4,7 @@ import { recipeToUrl } from "@/utils/recipeUrl";
 import {
   getRecentlyFavoritedRecipes,
   FavoritedRecipe,
-} from "@/lib/firebase-server";
+} from "@/lib/recipes";
 import { RecipeCardSkeleton } from "@/components/ui/Loading";
 
 async function RecentlyFavoritedData() {

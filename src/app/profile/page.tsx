@@ -15,16 +15,15 @@ import {
   MdDelete,
 } from "react-icons/md";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { getAuth, updateEmail, sendEmailVerification } from "firebase/auth";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
-import { db } from "@/firestore.config";
+import { authClient } from "@/lib/auth-client";
+import { api } from "@/lib/api";
 import { useDeleteRecipe } from "@/hooks/useDeleteRecipe";
 import { recipeToUrl } from "@/utils/recipeUrl";
+import type { RecipeSummary } from "@/lib/types";
 
 function Profile() {
   const router = useRouter();
-  const { userData, loading } = useCurrentUser();
-  const [currentUserData, setCurrentUserData] = useState<typeof userData>(null);
+  const { userData, loading, refetch } = useCurrentUser();
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
   const [editedEmail, setEditedEmail] = useState("");
@@ -32,28 +31,21 @@ function Profile() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [favoriteRecipes, setFavoriteRecipes] = useState<
-    Array<{ id: string; title: string; createdBy: string; photos?: any[] }>
-  >([]);
+  const [favoriteRecipes, setFavoriteRecipes] = useState<RecipeSummary[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(true);
-  const [userRecipes, setUserRecipes] = useState<
-    Array<{ id: string; title: string; createdBy: string; photos?: any[] }>
-  >([]);
+  const [userRecipes, setUserRecipes] = useState<RecipeSummary[]>([]);
   const [loadingUserRecipes, setLoadingUserRecipes] = useState(true);
 
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
-  const isEmailVerified = currentUser?.emailVerified || false;
+  const isEmailVerified = userData?.emailVerified || false;
 
-  // Refetch user data from Firestore
+  // Redirect signed-out visitors to the login page
+  useEffect(() => {
+    if (!loading && !userData) router.push("/login");
+  }, [loading, userData, router]);
+
+  // Refetch user data (name/email/about live on the session user)
   const refetchUserData = async () => {
-    if (currentUser) {
-      const userDocRef = doc(db, "Users", currentUser.uid);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        setCurrentUserData(userDoc.data() as typeof userData);
-      }
-    }
+    await refetch();
   };
 
   // Delete recipe hook
@@ -65,98 +57,40 @@ function Profile() {
     cancelDelete,
     confirmDeleteRecipe,
   } = useDeleteRecipe(
-    currentUser?.uid,
+    userData?.id,
     refetchUserData,
     setUserRecipes,
     setSuccess,
     setError
   );
 
-  // Update currentUserData only on initial load  // Fetch favorite recipe details
+  // Fetch the user's favorited and created recipes
+  const userId = userData?.id;
   useEffect(() => {
-    const fetchFavoriteRecipes = async () => {
-      if (userData?.favorites && userData.favorites.length > 0) {
-        setLoadingFavorites(true);
-        try {
-          const recipePromises = userData.favorites.map(
-            async (recipeId: string) => {
-              const recipeDoc = await getDoc(doc(db, "recipes", recipeId));
-              if (recipeDoc.exists()) {
-                return {
-                  id: recipeId,
-                  title: recipeDoc.data().title,
-                  createdBy: recipeDoc.data().createdBy,
-                  photos: recipeDoc.data().photos,
-                };
-              }
-              return null;
-            }
-          );
+    if (!userId) return;
+    let cancelled = false;
 
-          const recipes = await Promise.all(recipePromises);
-          setFavoriteRecipes(
-            recipes.filter((recipe) => recipe !== null) as Array<{
-              id: string;
-              title: string;
-              createdBy: string;
-              photos?: any[];
-            }>
-          );
-        } catch (error) {
-          console.error("Error fetching favorite recipes:", error);
-        }
+    api<{ favorites: RecipeSummary[]; recipes: RecipeSummary[] }>(
+      "/api/me/library"
+    )
+      .then((library) => {
+        if (cancelled) return;
+        setFavoriteRecipes(library.favorites);
+        setUserRecipes(library.recipes);
+      })
+      .catch((err) => console.error("Error fetching recipes:", err))
+      .finally(() => {
+        if (cancelled) return;
         setLoadingFavorites(false);
-      } else {
-        setLoadingFavorites(false);
-      }
-    };
-
-    fetchFavoriteRecipes();
-  }, [userData?.favorites]);
-
-  // Fetch user's created recipes
-  useEffect(() => {
-    const fetchUserRecipes = async () => {
-      if (userData?.recipes && userData.recipes.length > 0) {
-        setLoadingUserRecipes(true);
-        try {
-          const recipePromises = userData.recipes.map(
-            async (recipeId: string) => {
-              const recipeDoc = await getDoc(doc(db, "recipes", recipeId));
-              if (recipeDoc.exists()) {
-                return {
-                  id: recipeId,
-                  title: recipeDoc.data().title,
-                  createdBy: recipeDoc.data().createdBy,
-                  photos: recipeDoc.data().photos,
-                };
-              }
-              return null;
-            }
-          );
-
-          const recipes = await Promise.all(recipePromises);
-          setUserRecipes(
-            recipes.filter((recipe) => recipe !== null) as Array<{
-              id: string;
-              title: string;
-              createdBy: string;
-              photos?: any[];
-            }>
-          );
-        } catch (error) {
-          console.error("Error fetching user recipes:", error);
-        }
         setLoadingUserRecipes(false);
-      } else {
-        setLoadingUserRecipes(false);
-      }
+      });
+
+    return () => {
+      cancelled = true;
     };
+  }, [userId]);
 
-    fetchUserRecipes();
-  }, [userData?.recipes]);
-
-  if (loading) {
+  if (loading || !userData) {
     return (
       <>
         <Navbar />
@@ -167,26 +101,7 @@ function Profile() {
     );
   }
 
-  if (!userData) {
-    router.push("/login");
-    return null;
-  }
-
-  // Use userData directly if currentUserData isn't set yet
-  const displayData = currentUserData || userData;
-
-  if (!displayData) {
-    return (
-      <>
-        <Navbar />
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-white text-xl">Loading...</p>
-        </div>
-      </>
-    );
-  }
-
-  const { name, email, favorites, about } = displayData;
+  const { name, email, about } = userData;
 
   const handleEdit = () => {
     setEditedName(name);
@@ -211,10 +126,12 @@ function Profile() {
     setSuccess("");
 
     try {
-      if (currentUser) {
-        await sendEmailVerification(currentUser);
-        setSuccess("Verification email sent! Please check your inbox.");
-      }
+      const { error: sendError } = await authClient.sendVerificationEmail({
+        email,
+        callbackURL: "/profile",
+      });
+      if (sendError) throw sendError;
+      setSuccess("Verification email sent! Please check your inbox.");
     } catch (error) {
       console.error("Error sending verification email:", error);
       setError("Failed to send verification email. Please try again.");
@@ -227,44 +144,38 @@ function Profile() {
     setSuccess("");
 
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
+      const emailChanged = editedEmail.trim().toLowerCase() !== email;
 
-      if (!user) {
-        throw new Error("No user logged in");
-      }
-
-      // Update email in Firebase Auth if it changed
-      if (editedEmail !== email) {
-        await updateEmail(user, editedEmail);
-        // Send verification email to new address
-        await sendEmailVerification(user);
-      }
-
-      // Update name and email in Firestore
-      const userDocRef = doc(db, "Users", user.uid);
-      await updateDoc(userDocRef, {
+      const { error: updateError } = await authClient.updateUser({
         name: editedName,
-        email: editedEmail,
         about: editedAbout,
       });
+      if (updateError) throw updateError;
+
+      if (emailChanged) {
+        const { error: emailError } = await authClient.changeEmail({
+          newEmail: editedEmail.trim(),
+          callbackURL: "/profile",
+        });
+        if (emailError) throw emailError;
+      }
 
       // Refetch user data to update the UI
       await refetchUserData();
 
       setIsEditing(false);
-      if (editedEmail !== email) {
+      if (emailChanged) {
         setSuccess("Profile updated! Please verify your new email address.");
       } else {
         setSuccess("Profile updated successfully!");
       }
     } catch (error: any) {
       console.error("Error updating profile:", error);
-      if (error.code === "auth/requires-recent-login") {
+      if (error?.code === "SESSION_EXPIRED" || error?.status === 401) {
         setError("Please log out and log back in to update your email");
-      } else if (error.code === "auth/email-already-in-use") {
+      } else if (error?.code?.startsWith("USER_ALREADY_EXISTS")) {
         setError("This email is already in use");
-      } else if (error.code === "auth/invalid-email") {
+      } else if (error?.code === "INVALID_EMAIL") {
         setError("Invalid email address");
       } else {
         setError("Failed to update profile. Please try again.");
@@ -448,7 +359,7 @@ function Profile() {
                             src={
                               recipe.photos && recipe.photos.length > 0
                                 ? recipe.photos[0].url
-                                : "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+                                : "/images/static/anh-nguyen-kcA-c3f_3FE-unsplash.jpg"
                             }
                             fill
                             alt={recipe.title}
@@ -502,7 +413,7 @@ function Profile() {
                               src={
                                 recipe.photos && recipe.photos.length > 0
                                   ? recipe.photos[0].url
-                                  : "https://firebasestorage.googleapis.com/v0/b/joans-recipes-2025.firebasestorage.app/o/anh-nguyen-kcA-c3f_3FE-unsplash.jpg?alt=media&token=84d81dbd-d2ef-4035-8928-4526652bcd9c"
+                                  : "/images/static/anh-nguyen-kcA-c3f_3FE-unsplash.jpg"
                               }
                               fill
                               alt={recipe.title}

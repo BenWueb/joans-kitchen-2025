@@ -1,4 +1,4 @@
-import { getAuth, signOut } from "firebase/auth";
+import { authClient } from "@/lib/auth-client";
 
 /**
  * Logs out the current user and optionally stores the current path
@@ -6,8 +6,7 @@ import { getAuth, signOut } from "firebase/auth";
  */
 export const logout = async (currentPath?: string) => {
   try {
-    const auth = getAuth();
-    await signOut(auth);
+    await authClient.signOut();
 
     // Store the current path if provided, so user can return after re-login
     if (currentPath && typeof window !== "undefined") {
@@ -17,4 +16,3 @@ export const logout = async (currentPath?: string) => {
     console.error("Error signing out:", error);
   }
 };
-

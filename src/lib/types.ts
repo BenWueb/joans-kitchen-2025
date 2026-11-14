@@ -8,30 +8,34 @@ export interface Recipe {
   createdBy: string;
   ingredients?: string;
   recipe?: string;
-  notes?: any;
+  notes?: Note[];
   category?: string;
-  imageUrls?: string[];
-  photos?: { url: string; uploadedAt: any; uploadedBy: string }[];
+  photos?: Photo[];
   unsplashImageUrl?: string;
   unsplashPhotographer?: string;
   unsplashPhotographerUrl?: string;
   created?: { seconds: number; nanoseconds: number };
   createdByUserId?: string;
-  notesUpdatedBy?: string;
-  notesUpdatedAt?: string;
 }
 
 export interface UserData {
-  id?: string;
+  id: string;
   name: string;
   email: string;
-  favorites: string[];
-  recipes: string[];
-  about?: string;
-  isAdmin?: boolean;
+  emailVerified: boolean;
+  about?: string | null;
+  isAdmin: boolean;
+}
+
+export interface RecipeSummary {
+  id: string;
+  title: string;
+  createdBy: string;
+  photos?: Photo[];
 }
 
 export interface Note {
+  id: string;
   text: string;
   addedBy: string;
   addedByUserId?: string;
@@ -40,6 +44,7 @@ export interface Note {
 }
 
 export interface Photo {
+  id: string;
   url: string;
   addedBy: string;
   addedByUserId?: string;

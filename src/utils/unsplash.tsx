@@ -7,7 +7,6 @@ export interface RecipeImageData {
   id?: string;
   title: string;
   photos?: string[];
-  imageUrls?: string[];
   unsplashImageUrl?: string;
 }
 

@@ -2,24 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import {
-  doc,
-  updateDoc,
-  getDoc,
-  arrayUnion,
-  arrayRemove,
-} from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "@/firestore.config";
-import {
-  COLLECTIONS,
-  STORAGE_PATHS,
-  FILE_LIMITS,
-  PHOTO_DIMENSIONS,
-  DEFAULT_USER_NAME,
-} from "@/lib/constants";
+import { api } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
+import { resizeImageForUpload } from "@/utils/resizeImage";
 import type { Photo } from "@/lib/types";
 
 interface UseRecipePhotosProps {
@@ -29,21 +15,37 @@ interface UseRecipePhotosProps {
 
 type UploadStage = "uploading" | "processing";
 
-// Extract storage path from Firebase Storage download URL
-function getStoragePathFromUrl(url: string): string | null {
-  // Firebase Storage download URL format:
-  // https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<ENCODED_PATH>?alt=media&token=...
-  try {
-    const marker = "/o/";
-    const idx = url.indexOf(marker);
-    if (idx === -1) return null;
-    const rest = url.substring(idx + marker.length);
-    const encodedPath = rest.split("?")[0] || "";
-    if (!encodedPath) return null;
-    return decodeURIComponent(encodedPath);
-  } catch {
-    return null;
+// POST the file with XHR (fetch can't report upload progress)
+function uploadWithProgress(
+  url: string,
+  file: Blob,
+  opts?: {
+    onProgress?: (pct: number) => void;
+    onStage?: (stage: UploadStage) => void;
   }
+): Promise<Photo> {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append("file", file, "photo.webp");
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) opts?.onProgress?.((e.loaded / e.total) * 100);
+    };
+    // Body fully sent; the server is now processing and storing the image
+    xhr.upload.onload = () => opts?.onStage?.("processing");
+    xhr.onerror = () => reject(new TypeError("Network error"));
+    xhr.onload = () => {
+      let data: any = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as Photo);
+      else reject(new Error(data?.error || "Upload failed. Please try again."));
+    };
+    xhr.send(form);
+  });
 }
 
 export function useRecipePhotos({
@@ -55,6 +57,10 @@ export function useRecipePhotos({
   const [photoError, setPhotoError] = useState("");
 
   const uploadingPhoto = activeOps > 0;
+
+  // Resolve recipeId lazily (create-recipe makes the recipe on demand)
+  const resolveRecipeId = async () =>
+    recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
 
   // Upload a single photo (with optional progress + stage callbacks)
   const uploadPhoto = async (
@@ -68,106 +74,25 @@ export function useRecipePhotos({
     setPhotoError("");
 
     try {
-      const auth = getAuth();
-      const user = auth.currentUser;
-
-      if (!user) {
+      const { data: session } = await authClient.getSession();
+      if (!session?.user) {
         setPhotoError("You must be logged in to upload photos");
         return null;
       }
 
-      // Resolve recipeId lazily (create-recipe can create a draft doc on demand)
-      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      const finalRecipeId = await resolveRecipeId();
       if (!finalRecipeId) {
         setPhotoError("Recipe not ready yet. Please try again.");
         return null;
       }
 
-      // Get user's name from Firestore
-      const userDocRef = doc(db, COLLECTIONS.USERS, user.uid);
-      const userDoc = await getDoc(userDocRef);
-      const userName = userDoc.exists()
-        ? userDoc.data().name
-        : DEFAULT_USER_NAME;
-
-      // Create unique filename
-      const timestamp = Date.now();
-      const fileExtension = file.name.split(".").pop();
-      const fileName = `${finalRecipeId}_${timestamp}.${fileExtension}`;
-
-      // Upload to Firebase Storage
-      const storageRef = ref(
-        storage,
-        `${STORAGE_PATHS.RECIPE_PHOTOS}/${finalRecipeId}/${fileName}`
-      );
-      // Upload with progress
       opts?.onStage?.("uploading");
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      await new Promise<void>((resolve, reject) => {
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const pct =
-              snapshot.totalBytes > 0
-                ? (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-                : 0;
-            opts?.onProgress?.(pct);
-          },
-          (err) => reject(err),
-          () => resolve()
-        );
-      });
-
-      // Wait for the resize extension to process the image
-      const fileNameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
-      const resizedFileName = `${fileNameWithoutExt}${PHOTO_DIMENSIONS.RESIZED_SUFFIX}`;
-
-      // Poll for the resized image (with timeout)
-      opts?.onStage?.("processing");
-      let photoUrl = "";
-      let attempts = 0;
-
-      while (attempts < FILE_LIMITS.PHOTO_RESIZE_TIMEOUT_SECONDS) {
-        try {
-          const resizedRef = ref(
-            storage,
-            `${STORAGE_PATHS.RECIPE_PHOTOS}/${finalRecipeId}/${resizedFileName}`
-          );
-          photoUrl = await getDownloadURL(resizedRef);
-          break; // Successfully got the resized image
-        } catch (error) {
-          // Image not ready yet, wait and retry
-          await new Promise((resolve) =>
-            setTimeout(resolve, FILE_LIMITS.PHOTO_RESIZE_POLL_INTERVAL_MS)
-          );
-          attempts++;
-        }
-      }
-
-      // If resized version not available after timeout, use original
-      if (!photoUrl) {
-        console.warn("Resized image not ready, using original");
-        photoUrl = await getDownloadURL(storageRef);
-      }
-
-      // Determine which filename to store (resized or original)
-      const storedFileName = photoUrl.includes("_1920x1920.webp")
-        ? resizedFileName
-        : fileName;
-
-      // Create photo object
-      const photoObject: Photo = {
-        url: photoUrl,
-        addedBy: userName,
-        addedByUserId: user.uid,
-        addedAt: new Date().toISOString(),
-      };
-
-      // Add to Firestore
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
-      await updateDoc(recipeRef, {
-        photos: arrayUnion(photoObject),
-      });
+      const resized = await resizeImageForUpload(file);
+      const photoObject = await uploadWithProgress(
+        `/api/recipes/${finalRecipeId}/photos`,
+        resized,
+        opts
+      );
 
       router.refresh();
       return photoObject;
@@ -180,37 +105,21 @@ export function useRecipePhotos({
     }
   };
 
-  // Delete photo from storage and Firestore
+  // Delete photo from storage and the recipe
   const handleDeletePhoto = async (photo: Photo): Promise<boolean> => {
     setActiveOps((c) => c + 1);
     setPhotoError("");
 
     try {
-      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      const finalRecipeId = await resolveRecipeId();
       if (!finalRecipeId) {
         setPhotoError("Recipe not ready yet. Please try again.");
         return false;
       }
 
-      // Delete from Firebase Storage (the resized image)
-      if (photo.url) {
-        const storagePath = getStoragePathFromUrl(photo.url);
-        if (storagePath) {
-          try {
-            await deleteObject(ref(storage, storagePath));
-          } catch (err: any) {
-            // Ignore if already gone; otherwise log the error
-            if (err?.code !== "storage/object-not-found") {
-              logError("useRecipePhotos - delete from storage", err);
-            }
-          }
-        }
-      }
-
-      // Remove from Firestore
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
-      await updateDoc(recipeRef, {
-        photos: arrayRemove(photo),
+      await api(`/api/recipes/${finalRecipeId}/photos`, {
+        method: "DELETE",
+        json: { id: photo.id },
       });
 
       router.refresh();
@@ -229,13 +138,15 @@ export function useRecipePhotos({
     setActiveOps((c) => c + 1);
     setPhotoError("");
     try {
-      const finalRecipeId = recipeId || (ensureRecipeId ? await ensureRecipeId() : null);
+      const finalRecipeId = await resolveRecipeId();
       if (!finalRecipeId) {
         setPhotoError("Recipe not ready yet. Please try again.");
         return false;
       }
-      const recipeRef = doc(db, COLLECTIONS.RECIPES, finalRecipeId);
-      await updateDoc(recipeRef, { photos });
+      await api(`/api/recipes/${finalRecipeId}/photos`, {
+        method: "PUT",
+        json: { ids: photos.map((p) => p.id) },
+      });
       router.refresh();
       return true;
     } catch (error) {

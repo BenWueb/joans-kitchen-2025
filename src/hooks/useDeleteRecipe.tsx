@@ -1,15 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  doc,
-  updateDoc,
-  getDoc,
-  deleteDoc,
-  arrayRemove,
-} from "firebase/firestore";
-import { ref, deleteObject, listAll } from "firebase/storage";
-import { db, storage } from "@/firestore.config";
+import { api } from "@/lib/api";
 
 interface RecipeToDelete {
   id: string;
@@ -53,35 +45,8 @@ export const useDeleteRecipe = (
 
     setDeleting(true);
     try {
-      // Get recipe data to access photos
-      const recipeDoc = await getDoc(doc(db, "recipes", recipeToDelete.id));
-      const recipeData = recipeDoc.data();
-
-      // Delete all photos from Firebase Storage
-      if (recipeData?.photos && recipeData.photos.length > 0) {
-        try {
-          // Delete all resized photos (originals are auto-deleted by resize extension)
-          const folderRef = ref(storage, `recipe-photos/${recipeToDelete.id}`);
-          const fileList = await listAll(folderRef);
-
-          const deletePromises = fileList.items.map((fileRef) =>
-            deleteObject(fileRef)
-          );
-          await Promise.all(deletePromises);
-        } catch (storageError) {
-          console.error("Error deleting photos from storage:", storageError);
-          // Continue with recipe deletion even if photo deletion fails
-        }
-      }
-
-      // Delete recipe from Firestore
-      await deleteDoc(doc(db, "recipes", recipeToDelete.id));
-
-      // Remove recipe ID from user's recipes array
-      const userDocRef = doc(db, "Users", currentUserId);
-      await updateDoc(userDocRef, {
-        recipes: arrayRemove(recipeToDelete.id),
-      });
+      // The API deletes the recipe along with its photos in storage
+      await api(`/api/recipes/${recipeToDelete.id}`, { method: "DELETE" });
 
       // Update local state
       setUserRecipes((prev) => prev.filter((r) => r.id !== recipeToDelete.id));

@@ -1,7 +1,7 @@
 import Navbar from "@/components/Navbar";
 import SingleRecipe from "@/components/SingleRecipe";
 import { urlToRecipe } from "@/utils/recipeUrl";
-import { getRecipeByTitle } from "@/lib/firebase-server";
+import { getRecipeByTitle } from "@/lib/recipes";
 import { Suspense } from "react";
 import SimilarRecipes from "@/components/recipe/SimilarRecipes";
 
@@ -39,11 +39,8 @@ async function Recipe({ params }: { params: { recipe: string } }) {
             ingredients={recipe.ingredients}
             recipe={recipe.recipe}
             notes={recipe.notes}
-            notesUpdatedBy={recipe.notesUpdatedBy}
-            notesUpdatedAt={recipe.notesUpdatedAt}
             createdBy={recipe.createdBy}
             createdByUserId={recipe.createdByUserId}
-            imageUrls={recipe.imageUrls}
             unsplashImageUrl={recipe.unsplashImageUrl}
             category={recipe.category}
             created={recipe.created}

@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { doc, updateDoc, getDoc, arrayUnion, arrayRemove } from "firebase/firestore";
-import { db } from "@/firestore.config";
-import { COLLECTIONS } from "@/lib/constants";
+import { api } from "@/lib/api";
+import { authClient } from "@/lib/auth-client";
 import { getUserFriendlyErrorMessage, logError } from "@/lib/errors";
 
 interface UseRecipeFavoritesProps {
@@ -14,47 +12,40 @@ interface UseRecipeFavoritesProps {
 
 export function useRecipeFavorites({ recipeId }: UseRecipeFavoritesProps) {
   const router = useRouter();
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const { data: session, isPending } = authClient.useSession();
+  const currentUserId = session?.user?.id ?? "";
   const [isFavorited, setIsFavorited] = useState(false);
   const [checkingFavorite, setCheckingFavorite] = useState(true);
   const [error, setError] = useState("");
 
-  // Get current user's ID and check if recipe is favorited
+  // Check if this recipe is in the user's favorites
   useEffect(() => {
-    const auth = getAuth();
+    if (isPending) return;
 
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUserId(user.uid);
-
-        // Check if this recipe is in user's favorites
-        try {
-          const userDocRef = doc(db, COLLECTIONS.USERS, user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            const favorites = userData.favorites || [];
-            setIsFavorited(favorites.includes(recipeId));
-          }
-        } catch (error) {
-          logError("useRecipeFavorites - check favorite", error);
-        }
-      } else {
-        setCurrentUserId("");
-        setIsFavorited(false);
-      }
+    if (!currentUserId) {
+      setIsFavorited(false);
       setCheckingFavorite(false);
-    });
+      return;
+    }
 
-    return () => unsubscribe();
-  }, [recipeId]);
+    let cancelled = false;
+    api<{ favorited: boolean }>(`/api/recipes/${recipeId}/favorite`)
+      .then((res) => {
+        if (!cancelled) setIsFavorited(res.favorited);
+      })
+      .catch((err) => logError("useRecipeFavorites - check favorite", err))
+      .finally(() => {
+        if (!cancelled) setCheckingFavorite(false);
+      });
 
-  // Toggle favorite - Add/remove recipe from user's favorites array
+    return () => {
+      cancelled = true;
+    };
+  }, [recipeId, currentUserId, isPending]);
+
+  // Toggle favorite - add/remove recipe from the user's favorites
   const handleToggleFavorite = async () => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-
-    if (!user) {
+    if (!currentUserId) {
       // Store current path and navigate to login
       if (typeof window !== "undefined") {
         localStorage.setItem("returnUrl", window.location.pathname);
@@ -64,21 +55,11 @@ export function useRecipeFavorites({ recipeId }: UseRecipeFavoritesProps) {
     }
 
     try {
-      const userRef = doc(db, COLLECTIONS.USERS, user.uid);
-
-      if (isFavorited) {
-        // Remove from favorites
-        await updateDoc(userRef, {
-          favorites: arrayRemove(recipeId),
-        });
-        setIsFavorited(false);
-      } else {
-        // Add to favorites
-        await updateDoc(userRef, {
-          favorites: arrayUnion(recipeId),
-        });
-        setIsFavorited(true);
-      }
+      const res = await api<{ favorited: boolean }>(
+        `/api/recipes/${recipeId}/favorite`,
+        { method: isFavorited ? "DELETE" : "PUT" }
+      );
+      setIsFavorited(res.favorited);
       setError("");
       // Re-sync any server-rendered data that depends on favorites
       router.refresh();
@@ -97,4 +78,3 @@ export function useRecipeFavorites({ recipeId }: UseRecipeFavoritesProps) {
     setError,
   };
 }
-
